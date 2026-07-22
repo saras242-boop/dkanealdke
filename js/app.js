@@ -2,7 +2,7 @@
    دكاني الذكي — منطق الواجهة الرئيسي
    ========================================================= */
 
-const GOOGLE_CLIENT_ID = ''; // ضع هنا Client ID من Google إذا أردت تسجيل دخول حقيقي
+const GOOGLE_CLIENT_ID = '479200763607-b6h7ibe8qc1cacees0p0l2juig154pbf.apps.googleusercontent.com'; // Client ID من Google
 const viewTitles = {
   dashboard: 'لوحة المعلومات', cashier: 'شاشة الكاشير', products: 'إدارة المنتجات',
   inventory: 'المخزون', invoices: 'الفواتير', debts: 'الديون',
