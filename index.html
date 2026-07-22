@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دكاني الذكي — نظام إدارة السوبرماركت</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== شاشة الدخول ===== -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="tatreez-strip"></div>
+    <h1 class="brand">دكاني <span>الذكي</span></h1>
+    <p class="brand-sub">نظام إدارة ومبيعات السوبرماركت</p>
+    <form id="loginForm">
+      <label>اسم المتجر</label>
+      <input type="text" id="storeNameInput" placeholder="مثال: سوبرماركت الأمل" required>
+      <label>اسم المستخدم</label>
+      <input type="text" id="userNameInput" placeholder="اسمك" required>
+    </form>
+    <p class="hint">الزر أدناه يسجّل دخولك بحساب Google ويعتبر الدخول الأساسي لتفعيل النسخ الاحتياطي.</p>
+    <div id="googleSigninButton" style="margin: 12px 0;"></div>
+    <button id="googleBackupBtnLogin" type="button" class="btn-primary">تسجيل الدخول بحساب Google للنسخ الاحتياطي (مطلوب)</button>
+    <div id="googleStatus" class="hint" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- ===== واجهة التطبيق ===== -->
+<div id="appShell" class="app-shell hidden">
+
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="tatreez-strip small"></div>
+      <h2 class="brand-small">دكاني <span>الذكي</span></h2>
+      <p id="storeNameLabel" class="store-name"></p>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" data-view="dashboard">📊 لوحة المعلومات</button>
+      <button class="nav-btn" data-view="cashier">🧾 شاشة الكاشير</button>
+      <button class="nav-btn" data-view="products">📦 إدارة المنتجات</button>
+      <button class="nav-btn" data-view="inventory">🗃️ المخزون</button>
+      <button class="nav-btn" data-view="invoices">🧾 الفواتير</button>
+      <button class="nav-btn" data-view="debts">💳 الديون</button>
+      <button class="nav-btn" data-view="reports">📈 التقارير</button>
+      <button class="nav-btn" data-view="employees">👥 الموظفون</button>
+      <button class="nav-btn" data-view="settings">⚙️ الإعدادات</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="viewTitle">لوحة المعلومات</h1>
+      <div class="topbar-right">
+        <span id="userLabel" class="user-chip"></span>
+      </div>
+    </header>
+
+    <!-- لوحة المعلومات -->
+    <section id="view-dashboard" class="view active">
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="panel">
+        <h3>تنبيهات ذكية</h3>
+        <ul id="alertsList" class="alerts-list"></ul>
+      </div>
+    </section>
+
+    <!-- شاشة الكاشير -->
+    <section id="view-cashier" class="view">
+      <div class="cashier-grid">
+        <div class="cashier-left panel">
+          <div class="scan-row">
+            <button id="openCameraBtn" class="btn-primary">📷 مسح الباركود بالكاميرا</button>
+            <input type="text" id="manualSearch" placeholder="ابحث بالاسم أو الباركود...">
+          </div>
+          <div id="cameraWrap" class="camera-wrap hidden">
+            <div id="cameraReader"></div>
+            <div id="scanToast" class="scan-toast hidden"></div>
+            <button id="closeCameraBtn" class="btn-ghost">إغلاق الكاميرا</button>
+          </div>
+          <div id="searchResults" class="search-results"></div>
+        </div>
+        <div class="cashier-right panel">
+          <h3>سلة المبيعات</h3>
+          <div id="cartTable" class="cart-table"></div>
+          <div class="cart-total">
+            <span>الإجمالي</span>
+            <strong id="cartTotal">0.00 ₪</strong>
+          </div>
+          <button id="checkoutBtn" class="btn-primary full">✅ إتمام البيع</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- إدارة المنتجات -->
+    <section id="view-products" class="view">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>إضافة منتج</h3>
+        </div>
+        <form id="productForm" class="grid-form">
+          <input type="hidden" id="productId">
+          <input type="text" id="pName" placeholder="اسم المنتج" required>
+          <input type="text" id="pBarcode" placeholder="رقم الباركود" required>
+          <input type="number" step="0.01" id="pPrice" placeholder="سعر البيع" required>
+          <input type="number" step="0.01" id="pCost" placeholder="سعر الشراء">
+          <input type="number" id="pQty" placeholder="الكمية" required>
+          <input type="text" id="pCategory" placeholder="القسم">
+          <input type="text" id="pUnit" placeholder="الوحدة (قطعة/كرتونة/كيلو)">
+          <input type="number" id="pMinStock" placeholder="الحد الأدنى للمخزون" value="5">
+          <input type="date" id="pExpiry" placeholder="تاريخ الانتهاء (اختياري)">
+          <button type="submit" class="btn-primary">حفظ المنتج</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>كل المنتجات</h3>
+        <input type="text" id="productSearchBox" placeholder="بحث سريع...">
+        <div id="productsTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- المخزون -->
+    <section id="view-inventory" class="view">
+      <div class="panel">
+        <h3>حالة المخزون</h3>
+        <div id="inventoryTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- الفواتير -->
+    <section id="view-invoices" class="view">
+      <div class="panel">
+        <h3>سجل الفواتير</h3>
+        <div id="invoicesTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- الديون -->
+    <section id="view-debts" class="view">
+      <div class="panel">
+        <h3>إضافة دين</h3>
+        <form id="debtForm" class="grid-form">
+          <input type="text" id="dName" placeholder="اسم الزبون" required>
+          <input type="text" id="dPhone" placeholder="رقم الهاتف">
+          <input type="number" step="0.01" id="dAmount" placeholder="قيمة الدين" required>
+          <input type="text" id="dNotes" placeholder="ملاحظات">
+          <button type="submit" class="btn-primary">تسجيل الدين</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>سجل الديون</h3>
+        <div id="debtsTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- التقارير -->
+    <section id="view-reports" class="view">
+      <div class="panel">
+        <h3>الأرباح</h3>
+        <div class="stat-grid" id="reportStats"></div>
+      </div>
+      <div class="panel">
+        <h3>الأكثر مبيعاً</h3>
+        <div id="topProductsTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- الموظفون -->
+    <section id="view-employees" class="view">
+      <div class="panel">
+        <h3>إضافة موظف</h3>
+        <form id="employeeForm" class="grid-form">
+          <input type="text" id="eName" placeholder="اسم الموظف" required>
+          <select id="eRole">
+            <option value="مدير">مدير</option>
+            <option value="كاشير">كاشير</option>
+            <option value="موظف">موظف</option>
+          </select>
+          <button type="submit" class="btn-primary">إضافة</button>
+        </form>
+      </div>
+      <div class="panel">
+        <h3>قائمة الموظفين</h3>
+        <div id="employeesTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- الإعدادات -->
+    <section id="view-settings" class="view">
+      <div class="panel">
+        <h3>النسخ الاحتياطي واستعادة البيانات</h3>
+        <p class="hint">يتم حفظ نسخة من بيانات متجرك محليًا، ويمكنك حفظها أو استعادتها من Google Drive بعد تسجيل الدخول.</p>
+        <div class="btn-row">
+          <button id="exportBtn" class="btn-primary">⬇️ تنزيل نسخة احتياطية</button>
+          <label class="btn-ghost file-label">⬆️ استعادة نسخة احتياطية
+            <input type="file" id="importFile" accept="application/json" hidden>
+          </label>
+        </div>
+        <div class="btn-row">
+          <button id="driveBackupBtn" class="btn-primary">⬆️ نسخ احتياطي إلى Google Drive</button>
+          <button id="driveRestoreBtn" class="btn-ghost">⬇️ استعادة من Google Drive</button>
+        </div>
+        <p id="driveStatus" class="hint" style="margin-top:10px;"></p>
+      </div>
+      <div class="panel">
+        <h3>إعدادات الماسح الضوئي (الكاميرا)</h3>
+        <label>مدة القفل بعد كل عملية مسح ناجحة (ملي ثانية)</label>
+        <input type="number" id="scanLockSetting" min="500" max="5000" step="100">
+        <label>مدة انتظار إعادة مسح نفس المنتج (ملي ثانية)</label>
+        <input type="number" id="cooldownSetting" min="500" max="10000" step="100">
+        <button id="saveScanSettingsBtn" class="btn-primary">حفظ الإعدادات</button>
+      </div>
+      <div class="panel">
+        <h3>خطر</h3>
+        <button id="wipeBtn" class="btn-danger">حذف كل البيانات نهائيًا</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="js/db.js"></script>
+<script src="js/barcode.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
