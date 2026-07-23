@@ -2,31 +2,47 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>دكاني الذكي — نظام إدارة السوبرماركت</title>
+<meta name="theme-color" content="#16241C">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Aref+Ruqaa:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<!-- ===== خلفية زخرفية عامة ===== -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <pattern id="tatreezPattern" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M14 2 L22 14 L14 26 L6 14 Z" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <circle cx="14" cy="14" r="1.6" fill="currentColor"/>
+    </pattern>
+  </defs>
+</svg>
+
 <!-- ===== شاشة الدخول ===== -->
 <div id="loginScreen" class="login-screen">
+  <div class="login-decor" aria-hidden="true"></div>
   <div class="login-card">
-    <div class="tatreez-strip"></div>
+    <div class="tatreez-band" aria-hidden="true">
+      <svg viewBox="0 0 280 20" preserveAspectRatio="none"><rect width="280" height="20" fill="url(#tatreezPattern)" class="tatreez-fill"/></svg>
+    </div>
     <h1 class="brand">دكاني <span>الذكي</span></h1>
-    <p class="brand-sub">نظام إدارة ومبيعات السوبرماركت</p>
+    <p class="brand-sub">نظام إدارة ومبيعات السوبرماركت — سريع، ذكي، وبلا اتصال</p>
     <form id="loginForm">
-      <label>اسم المتجر</label>
-      <input type="text" id="storeNameInput" placeholder="مثال: سوبرماركت الأمل" required>
-      <label>اسم المستخدم</label>
-      <input type="text" id="userNameInput" placeholder="اسمك" required>
+      <label for="storeNameInput">اسم المتجر</label>
+      <input type="text" id="storeNameInput" placeholder="مثال: سوبرماركت الأمل" required autocomplete="off">
+      <label for="userNameInput">اسم المستخدم</label>
+      <input type="text" id="userNameInput" placeholder="اسمك" required autocomplete="off">
     </form>
-    <p class="hint">الزر أدناه يسجّل دخولك بحساب Google ويعتبر الدخول الأساسي لتفعيل النسخ الاحتياطي.</p>
-    <div id="googleSigninButton" style="margin: 12px 0;"></div>
-    <button id="googleBackupBtnLogin" type="button" class="btn-primary">تسجيل الدخول بحساب Google للنسخ الاحتياطي (مطلوب)</button>
-    <div id="googleStatus" class="hint" style="margin-top:10px;"></div>
+    <p class="hint">تسجيل الدخول بحساب Google يفعّل النسخ الاحتياطي التلقائي لبياناتك على Google Drive (اختياري لكن يُنصح به بشدة).</p>
+    <div id="googleSigninButton" class="google-btn-slot"></div>
+    <button id="googleBackupBtnLogin" type="button" class="btn-primary full">تسجيل الدخول بحساب Google</button>
+    <button id="localLoginBtn" type="button" class="btn-text">الدخول بدون حساب Google (محليًا فقط)</button>
+    <p id="googleStatus" class="hint status-line"></p>
   </div>
 </div>
 
@@ -35,27 +51,36 @@
 
   <aside class="sidebar">
     <div class="sidebar-head">
-      <div class="tatreez-strip small"></div>
+      <div class="tatreez-band small" aria-hidden="true">
+        <svg viewBox="0 0 220 12" preserveAspectRatio="none"><rect width="220" height="12" fill="url(#tatreezPattern)" class="tatreez-fill"/></svg>
+      </div>
       <h2 class="brand-small">دكاني <span>الذكي</span></h2>
       <p id="storeNameLabel" class="store-name"></p>
     </div>
-    <nav class="nav">
-      <button class="nav-btn active" data-view="dashboard">📊 لوحة المعلومات</button>
-      <button class="nav-btn" data-view="cashier">🧾 شاشة الكاشير</button>
-      <button class="nav-btn" data-view="products">📦 إدارة المنتجات</button>
-      <button class="nav-btn" data-view="inventory">🗃️ المخزون</button>
-      <button class="nav-btn" data-view="invoices">🧾 الفواتير</button>
-      <button class="nav-btn" data-view="debts">💳 الديون</button>
-      <button class="nav-btn" data-view="reports">📈 التقارير</button>
-      <button class="nav-btn" data-view="employees">👥 الموظفون</button>
-      <button class="nav-btn" data-view="settings">⚙️ الإعدادات</button>
+    <nav class="nav" id="mainNav">
+      <button class="nav-btn active" data-view="dashboard"><i class="ic ic-grid"></i><span>لوحة المعلومات</span></button>
+      <button class="nav-btn" data-view="cashier"><i class="ic ic-cart"></i><span>شاشة الكاشير</span></button>
+      <button class="nav-btn" data-view="products"><i class="ic ic-box"></i><span>إدارة المنتجات</span></button>
+      <button class="nav-btn" data-view="inventory"><i class="ic ic-stack"></i><span>المخزون</span></button>
+      <button class="nav-btn" data-view="invoices"><i class="ic ic-receipt"></i><span>الفواتير</span></button>
+      <button class="nav-btn" data-view="debts"><i class="ic ic-wallet"></i><span>الديون</span></button>
+      <button class="nav-btn" data-view="reports"><i class="ic ic-chart"></i><span>التقارير</span></button>
+      <button class="nav-btn" data-view="employees"><i class="ic ic-users"></i><span>الموظفون</span></button>
+      <button class="nav-btn" data-view="settings"><i class="ic ic-gear"></i><span>الإعدادات</span></button>
     </nav>
+    <div class="sidebar-foot">
+      <span class="version-tag">دكاني الذكي • v2</span>
+    </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
-      <h1 id="viewTitle">لوحة المعلومات</h1>
+      <div>
+        <h1 id="viewTitle">لوحة المعلومات</h1>
+        <p id="viewSubtitle" class="view-subtitle"></p>
+      </div>
       <div class="topbar-right">
+        <div class="clock" id="clockChip"></div>
         <span id="userLabel" class="user-chip"></span>
       </div>
     </header>
@@ -63,9 +88,15 @@
     <!-- لوحة المعلومات -->
     <section id="view-dashboard" class="view active">
       <div class="stat-grid" id="statGrid"></div>
-      <div class="panel">
-        <h3>تنبيهات ذكية</h3>
-        <ul id="alertsList" class="alerts-list"></ul>
+      <div class="dash-cols">
+        <div class="panel">
+          <div class="panel-head"><h3>تنبيهات ذكية</h3></div>
+          <ul id="alertsList" class="alerts-list"></ul>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>الأكثر مبيعًا هذا الأسبوع</h3></div>
+          <div id="dashTopProducts" class="bar-list"></div>
+        </div>
       </div>
     </section>
 
@@ -74,24 +105,31 @@
       <div class="cashier-grid">
         <div class="cashier-left panel">
           <div class="scan-row">
-            <button id="openCameraBtn" class="btn-primary">📷 مسح الباركود بالكاميرا</button>
-            <input type="text" id="manualSearch" placeholder="ابحث بالاسم أو الباركود...">
+            <button id="openCameraBtn" class="btn-primary"><i class="ic ic-camera"></i> مسح بالكاميرا</button>
+            <input type="text" id="manualSearch" placeholder="امسح الباركود بالجهاز أو ابحث بالاسم... ثم Enter" autocomplete="off">
           </div>
           <div id="cameraWrap" class="camera-wrap hidden">
             <div id="cameraReader"></div>
             <div id="scanToast" class="scan-toast hidden"></div>
-            <button id="closeCameraBtn" class="btn-ghost">إغلاق الكاميرا</button>
+            <div class="camera-actions">
+              <button id="closeCameraBtn" class="btn-ghost">إغلاق الكاميرا</button>
+            </div>
           </div>
           <div id="searchResults" class="search-results"></div>
+          <div class="quick-cats" id="quickCats"></div>
         </div>
         <div class="cashier-right panel">
-          <h3>سلة المبيعات</h3>
+          <div class="panel-head">
+            <h3>سلة المبيعات</h3>
+            <select id="cashierEmployee" class="mini-select" title="الكاشير الحالي"></select>
+          </div>
           <div id="cartTable" class="cart-table"></div>
           <div class="cart-total">
             <span>الإجمالي</span>
             <strong id="cartTotal">0.00 ₪</strong>
           </div>
           <button id="checkoutBtn" class="btn-primary full">✅ إتمام البيع</button>
+          <button id="clearCartBtn" class="btn-text full">إفراغ السلة</button>
         </div>
       </div>
     </section>
@@ -100,7 +138,8 @@
     <section id="view-products" class="view">
       <div class="panel">
         <div class="panel-head">
-          <h3>إضافة منتج</h3>
+          <h3 id="productFormTitle">إضافة منتج</h3>
+          <button type="button" id="cancelEditBtn" class="btn-text hidden">إلغاء التعديل</button>
         </div>
         <form id="productForm" class="grid-form">
           <input type="hidden" id="productId">
@@ -109,7 +148,8 @@
           <input type="number" step="0.01" id="pPrice" placeholder="سعر البيع" required>
           <input type="number" step="0.01" id="pCost" placeholder="سعر الشراء">
           <input type="number" id="pQty" placeholder="الكمية" required>
-          <input type="text" id="pCategory" placeholder="القسم">
+          <input type="text" id="pCategory" placeholder="القسم" list="categoryList">
+          <datalist id="categoryList"></datalist>
           <input type="text" id="pUnit" placeholder="الوحدة (قطعة/كرتونة/كيلو)">
           <input type="number" id="pMinStock" placeholder="الحد الأدنى للمخزون" value="5">
           <input type="date" id="pExpiry" placeholder="تاريخ الانتهاء (اختياري)">
@@ -117,8 +157,8 @@
         </form>
       </div>
       <div class="panel">
-        <h3>كل المنتجات</h3>
-        <input type="text" id="productSearchBox" placeholder="بحث سريع...">
+        <div class="panel-head"><h3>كل المنتجات</h3><span id="productsCount" class="count-chip"></span></div>
+        <input type="text" id="productSearchBox" placeholder="بحث سريع بالاسم أو الباركود...">
         <div id="productsTable" class="data-table"></div>
       </div>
     </section>
@@ -126,7 +166,14 @@
     <!-- المخزون -->
     <section id="view-inventory" class="view">
       <div class="panel">
-        <h3>حالة المخزون</h3>
+        <div class="panel-head">
+          <h3>حالة المخزون</h3>
+          <div class="tabs" id="inventoryTabs">
+            <button class="tab active" data-filter="all">الكل</button>
+            <button class="tab" data-filter="low">منخفض</button>
+            <button class="tab" data-filter="expiring">قارب على الانتهاء</button>
+          </div>
+        </div>
         <div id="inventoryTable" class="data-table"></div>
       </div>
     </section>
@@ -134,13 +181,14 @@
     <!-- الفواتير -->
     <section id="view-invoices" class="view">
       <div class="panel">
-        <h3>سجل الفواتير</h3>
+        <div class="panel-head"><h3>سجل الفواتير</h3><span id="invoicesCount" class="count-chip"></span></div>
         <div id="invoicesTable" class="data-table"></div>
       </div>
     </section>
 
     <!-- الديون -->
     <section id="view-debts" class="view">
+      <div class="stat-grid" id="debtStats"></div>
       <div class="panel">
         <h3>إضافة دين</h3>
         <form id="debtForm" class="grid-form">
@@ -165,7 +213,7 @@
       </div>
       <div class="panel">
         <h3>الأكثر مبيعاً</h3>
-        <div id="topProductsTable" class="data-table"></div>
+        <div id="topProductsTable" class="bar-list"></div>
       </div>
     </section>
 
@@ -175,9 +223,10 @@
         <h3>إضافة موظف</h3>
         <form id="employeeForm" class="grid-form">
           <input type="text" id="eName" placeholder="اسم الموظف" required>
+          <input type="text" id="ePhone" placeholder="رقم الهاتف (اختياري)">
           <select id="eRole">
             <option value="مدير">مدير</option>
-            <option value="كاشير">كاشير</option>
+            <option value="كاشير" selected>كاشير</option>
             <option value="موظف">موظف</option>
           </select>
           <button type="submit" class="btn-primary">إضافة</button>
@@ -193,7 +242,7 @@
     <section id="view-settings" class="view">
       <div class="panel">
         <h3>النسخ الاحتياطي واستعادة البيانات</h3>
-        <p class="hint">يتم حفظ نسخة من بيانات متجرك محليًا، ويمكنك حفظها أو استعادتها من Google Drive بعد تسجيل الدخول.</p>
+        <p class="hint">يتم حفظ بيانات متجرك محليًا على هذا الجهاز، ويمكنك حفظها أو استعادتها من Google Drive بعد تسجيل الدخول.</p>
         <div class="btn-row">
           <button id="exportBtn" class="btn-primary">⬇️ تنزيل نسخة احتياطية</button>
           <label class="btn-ghost file-label">⬆️ استعادة نسخة احتياطية
@@ -201,8 +250,8 @@
           </label>
         </div>
         <div class="btn-row">
-          <button id="driveBackupBtn" class="btn-primary">⬆️ نسخ احتياطي إلى Google Drive</button>
-          <button id="driveRestoreBtn" class="btn-ghost">⬇️ استعادة من Google Drive</button>
+          <button id="driveBackupBtn" class="btn-primary">☁️ نسخ احتياطي إلى Google Drive</button>
+          <button id="driveRestoreBtn" class="btn-ghost">☁️ استعادة من Google Drive</button>
         </div>
         <p id="driveStatus" class="hint" style="margin-top:10px;"></p>
       </div>
@@ -212,15 +261,57 @@
         <input type="number" id="scanLockSetting" min="500" max="5000" step="100">
         <label>مدة انتظار إعادة مسح نفس المنتج (ملي ثانية)</label>
         <input type="number" id="cooldownSetting" min="500" max="10000" step="100">
+        <label class="check-row"><input type="checkbox" id="scanBeepSetting"> تشغيل صوت عند نجاح المسح</label>
+        <label class="check-row"><input type="checkbox" id="scanVibrateSetting"> اهتزاز عند نجاح المسح (الجوال)</label>
         <button id="saveScanSettingsBtn" class="btn-primary">حفظ الإعدادات</button>
       </div>
-      <div class="panel">
-        <h3>خطر</h3>
+      <div class="panel danger-panel">
+        <h3>منطقة الخطر</h3>
+        <p class="hint">حذف البيانات إجراء نهائي ولا يمكن التراجع عنه. تأكد من أخذ نسخة احتياطية أولاً.</p>
         <button id="wipeBtn" class="btn-danger">حذف كل البيانات نهائيًا</button>
       </div>
     </section>
 
   </main>
+</div>
+
+<!-- ===== نظام التنبيهات (Toast) ===== -->
+<div id="toastStack" class="toast-stack" aria-live="polite"></div>
+
+<!-- ===== نافذة تأكيد عامة ===== -->
+<div id="confirmModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3 id="confirmModalTitle">تأكيد</h3>
+    <p id="confirmModalBody"></p>
+    <div class="modal-actions">
+      <button id="confirmModalCancel" class="btn-ghost">إلغاء</button>
+      <button id="confirmModalOk" class="btn-danger">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== نافذة الفاتورة / الإيصال ===== -->
+<div id="receiptModal" class="modal-overlay hidden">
+  <div class="modal-card receipt-card">
+    <div id="receiptContent" class="receipt-content"></div>
+    <div class="modal-actions">
+      <button id="receiptCloseBtn" class="btn-ghost">إغلاق</button>
+      <button id="receiptPrintBtn" class="btn-primary">🖨️ طباعة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== نافذة تسديد دين ===== -->
+<div id="payDebtModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>تسجيل دفعة</h3>
+    <p id="payDebtInfo" class="hint"></p>
+    <input type="number" step="0.01" id="payDebtAmount" placeholder="قيمة الدفعة">
+    <div class="modal-actions">
+      <button id="payDebtCancel" class="btn-ghost">إلغاء</button>
+      <button id="payDebtOk" class="btn-primary">تسجيل الدفعة</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
