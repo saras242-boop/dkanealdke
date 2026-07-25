@@ -128,7 +128,10 @@
             <span>الإجمالي</span>
             <strong id="cartTotal">0.00 ₪</strong>
           </div>
-          <button id="checkoutBtn" class="btn-primary full">✅ إتمام البيع</button>
+          <button id="checkoutBtn" class="btn-primary full checkout-btn">✅ إتمام البيع</button>
+          <div id="checkoutProgressWrap" class="checkout-progress-wrap hidden">
+            <div id="checkoutProgressBar" class="checkout-progress-bar"></div>
+          </div>
           <button id="clearCartBtn" class="btn-text full">إفراغ السلة</button>
         </div>
       </div>
@@ -193,7 +196,6 @@
         <h3>إضافة دين</h3>
         <form id="debtForm" class="grid-form">
           <input type="text" id="dName" placeholder="اسم الزبون" required>
-          <input type="text" id="dPhone" placeholder="رقم الهاتف">
           <input type="number" step="0.01" id="dAmount" placeholder="قيمة الدين" required>
           <input type="text" id="dNotes" placeholder="ملاحظات">
           <button type="submit" class="btn-primary">تسجيل الدين</button>
