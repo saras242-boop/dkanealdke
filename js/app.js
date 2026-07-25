@@ -952,7 +952,6 @@ function wireDebts() {
     if (!name || isNaN(amount) || amount <= 0) { showToast('يرجى إدخال بيانات صحيحة', 'error'); return; }
     const debt = {
       id: uid(), name,
-      phone: document.getElementById('dPhone').value.trim(),
       amount,
       paidAmount: 0,
       notes: document.getElementById('dNotes').value.trim(),
@@ -989,14 +988,13 @@ async function refreshDebtsTable() {
     return `
     <tr>
       <td>${escapeHtml(d.name)}</td>
-      <td>${escapeHtml(d.phone) || '-'}</td>
       <td>${money(d.amount)}</td>
       <td>${money(remaining)}</td>
       <td><span class="badge ${isPaid ? 'ok' : 'low'}">${isPaid ? 'مسدد' : 'غير مسدد'}</span></td>
       <td>${!isPaid ? `<button class="link-btn" onclick="openPayDebtModal('${d.id}')">تسجيل دفعة</button>` : ''}</td>
     </tr>`;
   }).join('');
-  el.innerHTML = `<table class="tbl"><thead><tr><th>الزبون</th><th>الهاتف</th><th>القيمة</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table class="tbl"><thead><tr><th>الزبون</th><th>القيمة</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 let payingDebtId = null;
