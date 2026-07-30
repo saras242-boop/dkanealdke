@@ -1,3 +1,16 @@
+/* =========================================================
+   دكاني الذكي — الملف الرئيسي المدمج (app.js)
+   يحتوي هذا الملف الواحد على:
+     1) إعداد الاتصال بـ Firebase (لميزة الموردين فقط)
+     2) منطق الواجهة الرئيسي للتطبيق (لوحة المعلومات، الكاشير،
+        المنتجات، المخزون، الفواتير، الديون، التقارير، الموظفون، الإعدادات)
+     3) منطق ميزة الموردين (تصفح الموردين من طرف صاحب المحل +
+        لوحة تحكم المورّد)
+
+   ملاحظة: بعد استخدام هذا الملف، احذف الإشارة إلى
+   js/firebase-config.js و js/suppliers.js من ملف index.html
+   وأبقِ فقط: js/db.js ثم js/barcode.js ثم js/app.js
+   ========================================================= */
 
 
 /* =========================================================
@@ -8,57 +21,20 @@
    عبر IndexedDB ولا يحتاج إنترنت.
    ========================================================= */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCc0B_xCY3cwilBbRZ3g6Kz65XEMmvo8Rk",
-  authDomain: "respict-212a7.firebaseapp.com",
-  databaseURL: "https://respict-212a7-default-rtdb.firebaseio.com",
-  projectId: "respict-212a7",
-  storageBucket: "respict-212a7.firebasestorage.app",
-  messagingSenderId: "531604352837",
-  appId: "1:531604352837:web:3a1bc13f75c9dbd329d82c",
-  measurementId: "G-M5G726058Q"
+  databaseURL: 'https://respict-212a7-default-rtdb.firebaseio.com/',
 };
-
 let _firebaseApp = null;
 let _firebaseDb = null;
-let _firebaseAuth = null;
-
-function initFirebase() {
-  if (typeof firebase === 'undefined') {
-    throw new Error('تعذر تحميل مكتبة Firebase. تحقق من اتصال الإنترنت.');
-  }
-
-  if (!_firebaseApp) {
-    _firebaseApp = firebase.apps && firebase.apps.length
-      ? firebase.app()
-      : firebase.initializeApp(FIREBASE_CONFIG);
-  }
-
-  if (!_firebaseDb) {
-    _firebaseDb = firebase.database();
-  }
-
-  if (!_firebaseAuth) {
-    _firebaseAuth = firebase.auth();
-  }
-
-  return {
-    db: _firebaseDb,
-    auth: _firebaseAuth
-  };
-}
-
 function getFirebaseDb() {
-  if (!_firebaseDb) {
-    initFirebase();
+  if (_firebaseDb) return _firebaseDb;
+  if (typeof firebase === 'undefined') {
+    throw new Error('تعذر تحميل مكتبة Firebase. تحقق من اتصالك بالإنترنت.');
   }
+  if (!_firebaseApp) {
+    _firebaseApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+  }
+  _firebaseDb = firebase.database();
   return _firebaseDb;
-}
-
-function getFirebaseAuth() {
-  if (!_firebaseAuth) {
-    initFirebase();
-  }
-  return _firebaseAuth;
 }
 
 
@@ -147,7 +123,7 @@ function daysUntil(dateStr) {
 function showToast(message, type = 'info', timeout = 3400) {
   const stack = document.getElementById('toastStack');
   const el = document.createElement('div');
-  el.className = toast ${type};
+  el.className = `toast ${type}`;
   el.textContent = message;
   stack.appendChild(el);
   setTimeout(() => {
@@ -376,7 +352,7 @@ async function findDriveBackupFile() {
 }
 
 async function downloadDriveFile(fileId) {
-  const response = await fetch(https://www.googleapis.com/drive/v3/files/${fileId}?alt=media, {
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
     headers: { Authorization: 'Bearer ' + googleAccessToken },
   });
   return await response.text();
@@ -386,8 +362,8 @@ async function createDriveFile(content) {
   const metadata = { name: 'dakkani-backup.json', mimeType: 'application/json' };
   const boundary = '-------314159265358979323846';
   const body =
-    --${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)} +
-    \r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--;
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}` +
+    `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
   await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + googleAccessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
@@ -399,9 +375,9 @@ async function updateDriveFile(fileId, content) {
   const metadata = { mimeType: 'application/json' };
   const boundary = '-------314159265358979323846';
   const body =
-    --${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)} +
-    \r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--;
-  await fetch(https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart, {
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}` +
+    `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${content}\r\n--${boundary}--`;
+  await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
     method: 'PATCH',
     headers: { Authorization: 'Bearer ' + googleAccessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
     body,
@@ -431,7 +407,7 @@ async function completeLogin(storeName, userName, googleSignedIn, email = '') {
     createdAt: new Date().toISOString(),
   };
   await dbAdd('settings', row);
-  setGoogleStatus(googleSignedIn ? تم تسجيل الدخول بحساب Google (${email}). : 'تم تسجيل الدخول محليًا على هذا الجهاز.');
+  setGoogleStatus(googleSignedIn ? `تم تسجيل الدخول بحساب Google (${email}).` : 'تم تسجيل الدخول محليًا على هذا الجهاز.');
   showApp(row, 'dashboard');
 }
 
@@ -453,7 +429,7 @@ async function showApp(settingsRow, initialView = 'dashboard') {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').classList.remove('hidden');
   document.getElementById('storeNameLabel').textContent = settingsRow.storeName || '';
-  document.getElementById('userLabel').textContent = settingsRow.userName ? مرحبًا، ${settingsRow.userName} : '';
+  document.getElementById('userLabel').textContent = settingsRow.userName ? `مرحبًا، ${settingsRow.userName}` : '';
 
   const scanCfg = await dbGet('settings', 'scanConfig');
   if (scanCfg) {
@@ -534,24 +510,24 @@ async function refreshDashboard() {
     { label: 'منتجات منخفضة المخزون', value: lowStock.length, cls: lowStock.length ? 'alert' : '' },
     { label: 'ديون مفتوحة', value: money(openDebtsTotal), cls: openDebtsTotal ? 'alert' : '' },
   ];
-  grid.innerHTML = stats.map(s => 
+  grid.innerHTML = stats.map(s => `
     <div class="stat-card ${s.cls}">
       <div class="label">${s.label}</div>
       <div class="value">${s.value}</div>
-    </div>).join('');
+    </div>`).join('');
 
   const alertsList = document.getElementById('alertsList');
   const alertItems = [];
   lowStock.forEach(p => alertItems.push({
-    cls: '', text: ⚠️ "${p.name}" منخفض في المخزون (المتبقي: ${p.qty} ${p.unit || ''}),
+    cls: '', text: `⚠️ "${p.name}" منخفض في المخزون (المتبقي: ${p.qty} ${p.unit || ''})`,
   }));
   expiringSoon.forEach(p => {
     const d = daysUntil(p.expiry);
-    const msg = d < 0 ? ⏰ "${p.name}" منتهي الصلاحية منذ ${Math.abs(d)} يوم : d === 0 ? ⏰ "${p.name}" ينتهي اليوم : ⏰ "${p.name}" ينتهي خلال ${d} يوم;
+    const msg = d < 0 ? `⏰ "${p.name}" منتهي الصلاحية منذ ${Math.abs(d)} يوم` : d === 0 ? `⏰ "${p.name}" ينتهي اليوم` : `⏰ "${p.name}" ينتهي خلال ${d} يوم`;
     alertItems.push({ cls: 'expiring', text: msg });
   });
   alertsList.innerHTML = alertItems.length
-    ? alertItems.map(a => <li class="${a.cls}">${a.text}</li>).join('')
+    ? alertItems.map(a => `<li class="${a.cls}">${a.text}</li>`).join('')
     : '<li class="empty">لا توجد تنبيهات حالياً — كل شيء على ما يرام ✅</li>';
 
   const weekSales = sales.filter(s => (Date.now() - new Date(s.date)) / 86400000 <= 7);
@@ -561,11 +537,11 @@ async function refreshDashboard() {
   const maxQty = top.length ? top[0][1] : 1;
   const topEl = document.getElementById('dashTopProducts');
   topEl.innerHTML = top.length
-    ? top.map(([name, qty]) => 
+    ? top.map(([name, qty]) => `
         <div class="bar-row">
           <div class="bar-label"><span>${name}</span><b>${qty}</b></div>
           <div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, (qty / maxQty) * 100)}%"></div></div>
-        </div>).join('')
+        </div>`).join('')
     : '<p class="hint">لا توجد مبيعات هذا الأسبوع بعد.</p>';
 }
 
@@ -589,7 +565,7 @@ function wireProducts() {
     const allProducts = await dbGetAll('products');
     const duplicate = allProducts.find(p => p.barcode === barcode && p.id !== id);
     if (duplicate) {
-      showToast(الباركود مستخدم مسبقًا للمنتج "${duplicate.name}", 'error');
+      showToast(`الباركود مستخدم مسبقًا للمنتج "${duplicate.name}"`, 'error');
       return;
     }
 
@@ -629,7 +605,7 @@ async function refreshCategoryList() {
   const products = await dbGetAll('products');
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
   const list = document.getElementById('categoryList');
-  if (list) list.innerHTML = categories.map(c => <option value="${escapeHtml(c)}">).join('');
+  if (list) list.innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
 }
 
 async function refreshProductsTable(filter = '') {
@@ -639,7 +615,7 @@ async function refreshProductsTable(filter = '') {
     ? products.filter(p => p.name.toLowerCase().includes(f) || p.barcode.includes(f) || (p.category || '').toLowerCase().includes(f))
     : products;
 
-  document.getElementById('productsCount').textContent = ${products.length} منتج;
+  document.getElementById('productsCount').textContent = `${products.length} منتج`;
   const el = document.getElementById('productsTable');
   if (filtered.length === 0) {
     el.innerHTML = '<div class="empty-state"><span class="emoji">📦</span>لا توجد منتجات مطابقة بعد.</div>';
@@ -647,7 +623,7 @@ async function refreshProductsTable(filter = '') {
   }
   const rows = filtered.map(p => {
     const low = p.qty <= (p.minStock ?? 5);
-    return 
+    return `
     <tr>
       <td>${escapeHtml(p.name)}</td>
       <td>${escapeHtml(p.barcode)}</td>
@@ -658,11 +634,11 @@ async function refreshProductsTable(filter = '') {
         <button class="link-btn" onclick="editProduct('${p.id}')">تعديل</button>
         <button class="link-btn danger" onclick="deleteProduct('${p.id}')">حذف</button>
       </td>
-    </tr>;
+    </tr>`;
   }).join('');
-  el.innerHTML = <table class="tbl"><thead><tr>
+  el.innerHTML = `<table class="tbl"><thead><tr>
     <th>الاسم</th><th>الباركود</th><th>السعر</th><th>الكمية</th><th>القسم</th><th></th>
-  </tr></thead><tbody>${rows}</tbody></table>;
+  </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 async function editProduct(id) {
@@ -679,7 +655,7 @@ async function editProduct(id) {
   document.getElementById('pUnit').value = p.unit;
   document.getElementById('pMinStock').value = p.minStock;
   document.getElementById('pExpiry').value = p.expiry || '';
-  document.getElementById('productFormTitle').textContent = تعديل: ${p.name};
+  document.getElementById('productFormTitle').textContent = `تعديل: ${p.name}`;
   document.getElementById('cancelEditBtn').classList.remove('hidden');
   switchToView('products');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -687,7 +663,7 @@ async function editProduct(id) {
 
 async function deleteProduct(id) {
   const p = await dbGet('products', id);
-  const ok = await confirmDialog('حذف المنتج', هل تريد حذف المنتج "${p ? p.name : ''}" نهائيًا؟);
+  const ok = await confirmDialog('حذف المنتج', `هل تريد حذف المنتج "${p ? p.name : ''}" نهائيًا؟`);
   if (!ok) return;
   await dbDelete('products', id);
   showToast('تم حذف المنتج', 'info');
@@ -730,21 +706,21 @@ async function refreshInventoryTable() {
     const d = daysUntil(p.expiry);
     let expiryBadge = '-';
     if (p.expiry) {
-      if (d < 0) expiryBadge = <span class="badge low">منتهي</span>;
-      else if (d <= 7) expiryBadge = <span class="badge warn">${d} يوم</span>;
+      if (d < 0) expiryBadge = `<span class="badge low">منتهي</span>`;
+      else if (d <= 7) expiryBadge = `<span class="badge warn">${d} يوم</span>`;
       else expiryBadge = escapeHtml(p.expiry);
     }
-    return <tr>
+    return `<tr>
       <td>${escapeHtml(p.name)}</td>
       <td>${p.qty} ${escapeHtml(p.unit || '')}</td>
       <td>${p.minStock ?? 5}</td>
       <td>${expiryBadge}</td>
       <td><span class="badge ${low ? 'low' : 'ok'}">${low ? 'منخفض' : 'جيد'}</span></td>
-    </tr>;
+    </tr>`;
   }).join('');
-  el.innerHTML = <table class="tbl"><thead><tr>
+  el.innerHTML = `<table class="tbl"><thead><tr>
     <th>المنتج</th><th>الكمية</th><th>الحد الأدنى</th><th>الصلاحية</th><th>الحالة</th>
-  </tr></thead><tbody>${rows}</tbody></table>;
+  </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 /* ============================================================
@@ -771,7 +747,7 @@ async function refreshCashierEmployeeSelect() {
   const select = document.getElementById('cashierEmployee');
   const employees = await dbGetAll('employees');
   const last = await dbGet('settings', 'lastCashier');
-  const options = ['<option value="">بدون تحديد</option>', ...employees.map(e => <option value="${escapeHtml(e.name)}">${escapeHtml(e.name)} (${escapeHtml(e.role)})</option>)];
+  const options = ['<option value="">بدون تحديد</option>', ...employees.map(e => `<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)} (${escapeHtml(e.role)})</option>`)];
   select.innerHTML = options.join('');
   if (last && employees.some(e => e.name === last.name)) select.value = last.name;
 }
@@ -781,7 +757,7 @@ async function refreshQuickCats() {
   const categories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
   const el = document.getElementById('quickCats');
   if (categories.length === 0) { el.innerHTML = ''; return; }
-  el.innerHTML = categories.map(c => <button type="button" class="quick-cat-chip" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>).join('');
+  el.innerHTML = categories.map(c => `<button type="button" class="quick-cat-chip" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('');
   el.querySelectorAll('.quick-cat-chip').forEach(chip => {
     chip.addEventListener('click', async () => {
       const cat = chip.dataset.cat;
@@ -803,11 +779,11 @@ async function refreshQuickCats() {
 function renderProductResults(products) {
   const resultsEl = document.getElementById('searchResults');
   if (products.length === 0) { resultsEl.innerHTML = '<p class="hint">لا نتائج</p>'; return; }
-  resultsEl.innerHTML = products.slice(0, 30).map(p => 
+  resultsEl.innerHTML = products.slice(0, 30).map(p => `
     <div class="result-row ${p.qty <= 0 ? 'disabled' : ''}" onclick="addToCartById('${p.id}')">
       <span class="r-name">${escapeHtml(p.name)}<span class="r-meta"> — ${money(p.price)}</span></span>
       <span class="r-meta">المتوفر: ${p.qty} ${escapeHtml(p.unit || '')}</span>
-    </div>).join('');
+    </div>`).join('');
 }
 
 async function onManualSearch(e) {
@@ -835,9 +811,9 @@ async function onManualSearchKeydown(e) {
     addProductToCart(exact);
     input.value = '';
     document.getElementById('searchResults').innerHTML = '';
-    showToast(تمت الإضافة: ${exact.name}, 'success', 1500);
+    showToast(`تمت الإضافة: ${exact.name}`, 'success', 1500);
   } else {
-    showToast(لا يوجد منتج بهذا الباركود (${code}), 'error');
+    showToast(`لا يوجد منتج بهذا الباركود (${code})`, 'error');
   }
 }
 
@@ -849,10 +825,10 @@ async function addToCartById(productId) {
 window.addToCartById = addToCartById;
 
 function addProductToCart(p) {
-  if (p.qty <= 0) { showToast("${p.name}" غير متوفر في المخزون, 'error'); return; }
+  if (p.qty <= 0) { showToast(`"${p.name}" غير متوفر في المخزون`, 'error'); return; }
   const existing = cart.find(c => c.productId === p.id);
   if (existing) {
-    if (existing.qty + 1 > p.qty) { showToast(الكمية المتوفرة من "${p.name}" هي ${p.qty} فقط, 'error'); return; }
+    if (existing.qty + 1 > p.qty) { showToast(`الكمية المتوفرة من "${p.name}" هي ${p.qty} فقط`, 'error'); return; }
     existing.qty += 1;
   } else {
     cart.push({ productId: p.id, name: p.name, price: p.price, cost: p.cost || 0, qty: 1, barcode: p.barcode, unit: p.unit || 'قطعة', stockQty: p.qty });
@@ -865,7 +841,7 @@ function renderCart() {
   if (cart.length === 0) {
     el.innerHTML = '<div class="empty-cart">🛒<br>السلة فارغة — امسح باركودًا أو ابحث عن منتج لإضافته</div>';
   } else {
-    el.innerHTML = cart.map((c, i) => 
+    el.innerHTML = cart.map((c, i) => `
       <div class="cart-row">
         <span class="c-name">${escapeHtml(c.name)}<span class="c-sub">${money(c.price)} / ${escapeHtml(c.unit)}</span></span>
         <div class="qty-stepper">
@@ -875,7 +851,7 @@ function renderCart() {
         </div>
         <span>${money(c.price * c.qty)}</span>
         <button class="remove-btn" onclick="removeFromCart(${i})">✕</button>
-      </div>).join('');
+      </div>`).join('');
   }
   const total = cart.reduce((a, c) => a + c.price * c.qty, 0);
   document.getElementById('cartTotal').textContent = money(total);
@@ -886,7 +862,7 @@ function stepCartQty(index, delta) {
   if (!item) return;
   const newQty = item.qty + delta;
   if (newQty < 1) return;
-  if (delta > 0 && newQty > item.stockQty) { showToast(الكمية المتوفرة هي ${item.stockQty} فقط, 'error'); return; }
+  if (delta > 0 && newQty > item.stockQty) { showToast(`الكمية المتوفرة هي ${item.stockQty} فقط`, 'error'); return; }
   item.qty = newQty;
   renderCart();
 }
@@ -894,7 +870,7 @@ function updateCartQty(index, value) {
   const q = parseInt(value, 10);
   const item = cart[index];
   if (!item || isNaN(q) || q < 1) { renderCart(); return; }
-  if (q > item.stockQty) { showToast(الكمية المتوفرة هي ${item.stockQty} فقط, 'error'); item.qty = item.stockQty; renderCart(); return; }
+  if (q > item.stockQty) { showToast(`الكمية المتوفرة هي ${item.stockQty} فقط`, 'error'); item.qty = item.stockQty; renderCart(); return; }
   item.qty = q;
   renderCart();
 }
@@ -917,10 +893,10 @@ async function openCamera() {
       const products = await dbGetAll('products');
       const p = products.find(pr => pr.barcode === code);
       if (p) {
-        showScanToast(✅ تمت إضافة: ${p.name}, false);
+        showScanToast(`✅ تمت إضافة: ${p.name}`, false);
         addProductToCart(p);
       } else {
-        showScanToast(❌ لا يوجد منتج بهذا الباركود, true);
+        showScanToast(`❌ لا يوجد منتج بهذا الباركود`, true);
         offerQuickAddProduct(code);
       }
     },
@@ -936,7 +912,7 @@ async function openCamera() {
 }
 
 function offerQuickAddProduct(code) {
-  showToast(باركود غير معروف (${code}) — يمكنك إضافته من "إدارة المنتجات", 'info', 4500);
+  showToast(`باركود غير معروف (${code}) — يمكنك إضافته من "إدارة المنتجات"`, 'info', 4500);
 }
 
 let toastTimer = null;
@@ -960,8 +936,8 @@ async function checkout() {
 
   for (const c of cart) {
     const p = products.find(pr => pr.id === c.productId);
-    if (!p) { showToast(المنتج "${c.name}" لم يعد موجودًا, 'error'); return; }
-    if (p.qty < c.qty) { showToast(الكمية غير كافية للمنتج "${p.name}" (المتوفر: ${p.qty}), 'error'); return; }
+    if (!p) { showToast(`المنتج "${c.name}" لم يعد موجودًا`, 'error'); return; }
+    if (p.qty < c.qty) { showToast(`الكمية غير كافية للمنتج "${p.name}" (المتوفر: ${p.qty})`, 'error'); return; }
   }
 
   let total = 0, profit = 0;
@@ -985,7 +961,7 @@ async function checkout() {
   renderCart();
   document.getElementById('manualSearch').value = '';
   document.getElementById('searchResults').innerHTML = '';
-  showToast(تم إتمام البيع بنجاح — ${money(total)} ✅, 'success');
+  showToast(`تم إتمام البيع بنجاح — ${money(total)} ✅`, 'success');
   showReceipt(sale);
   refreshDashboard();
 }
@@ -993,17 +969,17 @@ async function checkout() {
 async function showReceipt(sale) {
   const store = await dbGet('settings', 'store');
   const content = document.getElementById('receiptContent');
-  content.innerHTML = 
+  content.innerHTML = `
     <div class="r-head">
       <h3>${escapeHtml(store ? store.storeName : 'دكاني الذكي')}</h3>
       <p>${fmtDate(sale.date)}</p>
-      ${sale.employeeName ? <p>الكاشير: ${escapeHtml(sale.employeeName)}</p> : ''}
+      ${sale.employeeName ? `<p>الكاشير: ${escapeHtml(sale.employeeName)}</p>` : ''}
     </div>
     <table>
-      ${sale.items.map(i => <tr><td>${escapeHtml(i.name)} × ${i.qty}</td><td style="text-align:left">${money(i.price * i.qty)}</td></tr>).join('')}
+      ${sale.items.map(i => `<tr><td>${escapeHtml(i.name)} × ${i.qty}</td><td style="text-align:left">${money(i.price * i.qty)}</td></tr>`).join('')}
     </table>
     <div class="r-total"><span>الإجمالي</span><span>${money(sale.total)}</span></div>
-  ;
+  `;
   document.getElementById('receiptModal').classList.remove('hidden');
 }
 
@@ -1012,17 +988,17 @@ async function showReceipt(sale) {
    ============================================================ */
 async function refreshInvoicesTable() {
   const sales = (await dbGetAll('sales')).sort((a, b) => new Date(b.date) - new Date(a.date));
-  document.getElementById('invoicesCount').textContent = ${sales.length} فاتورة;
+  document.getElementById('invoicesCount').textContent = `${sales.length} فاتورة`;
   const el = document.getElementById('invoicesTable');
   if (sales.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">🧾</span>لا توجد فواتير بعد.</div>'; return; }
-  const rows = sales.map(s => 
+  const rows = sales.map(s => `
     <tr>
       <td>${fmtDate(s.date)}</td>
-      <td>${s.items.map(i => ${escapeHtml(i.name)} × ${i.qty}).join('، ')}</td>
+      <td>${s.items.map(i => `${escapeHtml(i.name)} × ${i.qty}`).join('، ')}</td>
       <td>${escapeHtml(s.employeeName) || '-'}</td>
       <td>${money(s.total)}</td>
-    </tr>).join('');
-  el.innerHTML = <table class="tbl"><thead><tr><th>التاريخ</th><th>المنتجات</th><th>الكاشير</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>;
+    </tr>`).join('');
+  el.innerHTML = `<table class="tbl"><thead><tr><th>التاريخ</th><th>المنتجات</th><th>الكاشير</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 /* ============================================================
@@ -1057,11 +1033,11 @@ async function refreshDebtsTable() {
   const totalOwed = debts.reduce((a, d) => a + d.amount, 0);
   const totalPaid = debts.reduce((a, d) => a + (d.paidAmount ?? (d.paid ? d.amount : 0)), 0);
   const totalRemaining = totalOwed - totalPaid;
-  document.getElementById('debtStats').innerHTML = 
+  document.getElementById('debtStats').innerHTML = `
     <div class="stat-card"><div class="label">إجمالي الديون المسجلة</div><div class="value">${money(totalOwed)}</div></div>
     <div class="stat-card good"><div class="label">المسدد</div><div class="value">${money(totalPaid)}</div></div>
     <div class="stat-card ${totalRemaining ? 'alert' : ''}"><div class="label">المتبقي</div><div class="value">${money(totalRemaining)}</div></div>
-  ;
+  `;
 
   const el = document.getElementById('debtsTable');
   if (debts.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">💳</span>لا توجد ديون مسجلة.</div>'; return; }
@@ -1069,16 +1045,16 @@ async function refreshDebtsTable() {
     const paidAmount = d.paidAmount ?? (d.paid ? d.amount : 0);
     const remaining = d.amount - paidAmount;
     const isPaid = remaining <= 0.005;
-    return 
+    return `
     <tr>
       <td>${escapeHtml(d.name)}</td>
       <td>${money(d.amount)}</td>
       <td>${money(remaining)}</td>
       <td><span class="badge ${isPaid ? 'ok' : 'low'}">${isPaid ? 'مسدد' : 'غير مسدد'}</span></td>
-      <td>${!isPaid ? <button class="link-btn" onclick="openPayDebtModal('${d.id}')">تسجيل دفعة</button> : ''}</td>
-    </tr>;
+      <td>${!isPaid ? `<button class="link-btn" onclick="openPayDebtModal('${d.id}')">تسجيل دفعة</button>` : ''}</td>
+    </tr>`;
   }).join('');
-  el.innerHTML = <table class="tbl"><thead><tr><th>الزبون</th><th>القيمة</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>${rows}</tbody></table>;
+  el.innerHTML = `<table class="tbl"><thead><tr><th>الزبون</th><th>القيمة</th><th>المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 let payingDebtId = null;
@@ -1088,7 +1064,7 @@ async function openPayDebtModal(id) {
   payingDebtId = id;
   const paidAmount = d.paidAmount ?? (d.paid ? d.amount : 0);
   const remaining = d.amount - paidAmount;
-  document.getElementById('payDebtInfo').textContent = ${d.name} — المتبقي: ${money(remaining)};
+  document.getElementById('payDebtInfo').textContent = `${d.name} — المتبقي: ${money(remaining)}`;
   const amountInput = document.getElementById('payDebtAmount');
   amountInput.value = remaining.toFixed(2);
   amountInput.max = remaining;
@@ -1109,7 +1085,7 @@ async function submitDebtPayment() {
   d.paid = d.paidAmount >= d.amount - 0.005;
   await dbAdd('debts', d);
   document.getElementById('payDebtModal').classList.add('hidden');
-  showToast(تم تسجيل دفعة بقيمة ${money(applied)} ✅, 'success');
+  showToast(`تم تسجيل دفعة بقيمة ${money(applied)} ✅`, 'success');
   payingDebtId = null;
   refreshDebtsTable();
 }
@@ -1133,7 +1109,7 @@ async function refreshReports() {
     { label: 'عدد عمليات البيع', value: sales.length },
     { label: 'متوسط قيمة الفاتورة', value: sales.length ? money(revenue(sales) / sales.length) : money(0) },
   ];
-  grid.innerHTML = stats.map(s => <div class="stat-card"><div class="label">${s.label}</div><div class="value">${s.value}</div></div>).join('');
+  grid.innerHTML = stats.map(s => `<div class="stat-card"><div class="label">${s.label}</div><div class="value">${s.value}</div></div>`).join('');
 
   const qtyMap = {};
   sales.forEach(s => s.items.forEach(i => { qtyMap[i.name] = (qtyMap[i.name] || 0) + i.qty; }));
@@ -1141,11 +1117,11 @@ async function refreshReports() {
   const maxQty = top.length ? top[0][1] : 1;
   const el = document.getElementById('topProductsTable');
   el.innerHTML = top.length
-    ? top.map(([name, qty]) => 
+    ? top.map(([name, qty]) => `
         <div class="bar-row">
           <div class="bar-label"><span>${escapeHtml(name)}</span><b>${qty} وحدة</b></div>
           <div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, (qty / maxQty) * 100)}%"></div></div>
-        </div>).join('')
+        </div>`).join('')
     : '<p class="hint">لا توجد بيانات مبيعات بعد.</p>';
 }
 
@@ -1170,14 +1146,14 @@ async function refreshEmployeesTable() {
   const el = document.getElementById('employeesTable');
   if (employees.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">👥</span>لا يوجد موظفون بعد.</div>'; }
   else {
-    const rows = employees.map(emp => 
+    const rows = employees.map(emp => `
       <tr>
         <td>${escapeHtml(emp.name)}</td>
         <td>${escapeHtml(emp.phone) || '-'}</td>
         <td><span class="badge ${emp.role === 'مدير' ? 'warn' : 'ok'}">${escapeHtml(emp.role)}</span></td>
         <td><button class="link-btn danger" onclick="deleteEmployee('${emp.id}')">حذف</button></td>
-      </tr>).join('');
-    el.innerHTML = <table class="tbl"><thead><tr><th>الاسم</th><th>الهاتف</th><th>الصلاحية</th><th></th></tr></thead><tbody>${rows}</tbody></table>;
+      </tr>`).join('');
+    el.innerHTML = `<table class="tbl"><thead><tr><th>الاسم</th><th>الهاتف</th><th>الصلاحية</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   refreshCashierEmployeeSelect();
 }
@@ -1201,7 +1177,7 @@ function wireSettings() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = dakkani-backup-${new Date().toISOString().slice(0, 10)}.json;
+    a.download = `dakkani-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     showToast('تم تنزيل النسخة الاحتياطية', 'success');
   });
@@ -1240,138 +1216,220 @@ function wireSettings() {
   });
 }
 
+
+/* =========================================================
+   3) ميزة الموردين (Firebase Realtime Database)
+   ========================================================= */
+
+const SUPPLIER_PRODUCT_CAP = 1600;
+
+let currentSupplierSession = null; // { id, name }
+let selectedSupplierId = null;
+let selectedSupplierName = '';
+let supplierCart = []; // [{productId, name, price, qty}]
+let editingSupplierProductId = null;
+let _storeIdCache = null;
+let _mySupplierProductsCache = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // نربط كل جزء بشكل منفصل ومحمي: إذا فشل جزء واحد لأي سبب،
+  // يبقى باقي الأجزاء (زر الدخول، التبويبات...) يعمل بشكل طبيعي.
+  safeRun(wireSupplierLoginUi);
+  safeRun(wireSupplierTabs);
+  safeRun(wireSupplierBrowseUi);
+  safeRun(wireSupplierDashboardUi);
+
+  // ربط مباشر إضافي لزر "الموردين" في القائمة الجانبية (احتياطي مستقل
+  // عن أي كود آخر) لضمان عمل القسم حتى لو تغيّر أي شيء في مكان آخر.
+  const suppliersNavBtn = document.querySelector('.nav-btn[data-view="suppliers"]');
+  if (suppliersNavBtn) suppliersNavBtn.addEventListener('click', () => safeRun(refreshSuppliersView));
+
+  try {
+    const saved = await dbGet('settings', 'supplierSession');
+    if (saved && saved.id) {
+      currentSupplierSession = { id: saved.id, name: saved.name };
+      showSupplierShell();
+    }
+  } catch (err) { /* لا توجد جلسة محفوظة */ }
+});
+
+function safeRun(fn) {
+  try { return fn(); } catch (err) { console.error('خطأ في ميزة الموردين:', err); }
+}
+
+/* استدعاء أي وعد (Promise) مع مهلة قصوى؛ إذا لم يستجب الخادم خلال المهلة
+   نعتبرها فشلاً بدل أن تبقى الشاشة عالقة على "جارِ التحميل" للأبد. */
+function withTimeout(promise, ms = 9000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('انتهت مهلة الاتصال بالخادم')), ms)),
+  ]);
+}
+
+async function getStoreId() {
+  if (_storeIdCache) return _storeIdCache;
+  let row = await dbGet('settings', 'storeId');
+  if (!row) {
+    row = { key: 'storeId', id: uid() };
+    await dbAdd('settings', row);
+  }
+  _storeIdCache = row.id;
+  return _storeIdCache;
+}
+
+function firebaseErrorToast(err) {
+  console.error(err);
+  const isTimeout = err && /مهلة/.test(err.message || '');
+  showToast(
+    isTimeout
+      ? 'انتهت مهلة الاتصال بخادم الموردين. تحقق من الإنترنت وحاول مرة أخرى.'
+      : 'تعذر الاتصال بخادم الموردين. تحقق من اتصال الإنترنت أو من إعدادات Firebase وحاول مرة أخرى.',
+    'error', 4500
+  );
+}
+
+/* ============================================================
+   دخول المورد
+   ============================================================ */
 function wireSupplierLoginUi() {
-  const loginLink = document.getElementById('supplierLoginLink');
-  const cancelBtn = document.getElementById('supplierLoginCancel');
-  const okBtn = document.getElementById('supplierLoginOk');
-
-  if (loginLink) {
-    loginLink.addEventListener('click', () => {
-      document.getElementById('supplierLoginUser').value = '';
-      document.getElementById('supplierLoginPass').value = '';
-      document.getElementById('supplierLoginError').textContent = '';
-
-      document
-        .getElementById('supplierLoginModal')
-        .classList.remove('hidden');
-    });
-  }
-
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', () => {
-      document
-        .getElementById('supplierLoginModal')
-        .classList.add('hidden');
-    });
-  }
-
-  if (okBtn) {
-    okBtn.addEventListener('click', attemptSupplierLogin);
-  }
+  document.getElementById('supplierLoginLink').addEventListener('click', () => {
+    document.getElementById('supplierLoginUser').value = '';
+    document.getElementById('supplierLoginPass').value = '';
+    document.getElementById('supplierLoginError').textContent = '';
+    document.getElementById('supplierLoginModal').classList.remove('hidden');
+  });
+  document.getElementById('supplierLoginCancel').addEventListener('click', () => {
+    document.getElementById('supplierLoginModal').classList.add('hidden');
+  });
+  document.getElementById('supplierLoginModal').addEventListener('click', (e) => {
+    if (e.target.id === 'supplierLoginModal') document.getElementById('supplierLoginCancel').click();
+  });
+  document.getElementById('supplierLoginOk').addEventListener('click', attemptSupplierLogin);
+  document.getElementById('supplierLogoutBtn').addEventListener('click', async () => {
+    const ok = await confirmDialog('تسجيل الخروج', 'هل تريد تسجيل الخروج من لوحة المورّد؟');
+    if (!ok) return;
+    await dbDelete('settings', 'supplierSession');
+    location.reload();
+  });
 }
 
 async function attemptSupplierLogin() {
   const user = document.getElementById('supplierLoginUser').value.trim();
   const pass = document.getElementById('supplierLoginPass').value;
   const errEl = document.getElementById('supplierLoginError');
-
   errEl.textContent = '';
-
-  if (!user || !pass) {
-    errEl.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
-    return;
-  }
+  if (!user || !pass) { errEl.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور'; return; }
 
   const okBtn = document.getElementById('supplierLoginOk');
   okBtn.disabled = true;
   okBtn.textContent = 'جارِ التحقق...';
-
   try {
-    // Firebase Authentication
-    const auth = getFirebaseAuth();
-
-    const result = await auth.signInWithEmailAndPassword(
-      user,
-      pass
-    );
-
-    const firebaseUser = result.user;
-
-    // جلب بيانات المورد من قاعدة البيانات
     const db = getFirebaseDb();
-
-    const snap = await withTimeout(
-      db.ref('suppliers/' + firebaseUser.uid).once('value')
-    );
-
-    const supplierData = snap.val() || {};
-
-    // فحص حالة الحساب
-    if (
-      supplierData.status === 'suspended' ||
-      supplierData.status === 'disabled'
-    ) {
-      await auth.signOut();
-
-      errEl.textContent =
-        'تم إيقاف هذا الحساب. تواصل مع إدارة دكاني الذكي.';
+    const snap = await withTimeout(db.ref('suppliers').once('value'));
+    const all = snap.val() || {};
+    let matchId = null, matchVal = null;
+    Object.entries(all).forEach(([key, val]) => {
+      if (matchId) return;
+      const uMatch = val.username === user || val.phone === user;
+      if (uMatch && val.password === pass) { matchId = key; matchVal = val; }
+    });
+    if (!matchId) { errEl.textContent = 'بيانات الدخول غير صحيحة'; return; }
+    if (matchVal.status === 'suspended' || matchVal.status === 'disabled') {
+      errEl.textContent = 'تم إيقاف هذا الحساب. تواصل مع إدارة دكاني الذكي.';
       return;
     }
-
-    // حفظ جلسة المورد
-    currentSupplierSession = {
-      id: firebaseUser.uid,
-      name:
-        supplierData.supplierName ||
-        supplierData.name ||
-        firebaseUser.email ||
-        'مورّد'
-    };
-
-    await dbAdd('settings', {
-      key: 'supplierSession',
-      id: firebaseUser.uid,
-      name: currentSupplierSession.name
-    });
-
-    document
-      .getElementById('supplierLoginModal')
-      .classList.add('hidden');
-
+    currentSupplierSession = { id: matchId, name: matchVal.supplierName || matchVal.name || 'مورّد' };
+    await dbAdd('settings', { key: 'supplierSession', id: matchId, name: currentSupplierSession.name });
+    document.getElementById('supplierLoginModal').classList.add('hidden');
     showSupplierShell();
-
   } catch (err) {
-
-    console.error('Supplier Login Error:', err);
-
-    switch (err.code) {
-      case 'auth/user-not-found':
-        errEl.textContent = 'الحساب غير موجود';
-        break;
-
-      case 'auth/wrong-password':
-        errEl.textContent = 'كلمة المرور غير صحيحة';
-        break;
-
-      case 'auth/invalid-email':
-        errEl.textContent = 'البريد الإلكتروني غير صحيح';
-        break;
-
-      case 'auth/invalid-credential':
-        errEl.textContent = 'بيانات الدخول غير صحيحة';
-        break;
-
-      default:
-        errEl.textContent =
-          'حدث خطأ أثناء تسجيل الدخول';
-        break;
-    }
-
+    console.error(err);
+    errEl.textContent = 'تعذر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.';
   } finally {
-
     okBtn.disabled = false;
     okBtn.textContent = 'دخول';
+  }
+}
 
+function showSupplierShell() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.add('hidden');
+  document.getElementById('supplierShell').classList.remove('hidden');
+  document.getElementById('supplierNameLabel').textContent = currentSupplierSession.name;
+  document.getElementById('supplierUserChip').textContent = `مرحبًا، ${currentSupplierSession.name}`;
+  switchSupplierView('orders');
+}
+
+/* ============================================================
+   تبويبات قسم الموردين (لصاحب المحل)
+   ============================================================ */
+function wireSupplierTabs() {
+  document.getElementById('supplierTabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    document.querySelectorAll('#supplierTabs .tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.stab;
+    document.getElementById('supplierBrowsePane').classList.toggle('hidden', tab !== 'browse');
+    document.getElementById('supplierOrdersPane').classList.toggle('hidden', tab !== 'orders');
+    if (tab === 'orders') loadMyOrders();
+  });
+}
+
+function refreshSuppliersView() {
+  document.querySelectorAll('#supplierTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.stab === 'browse'));
+  document.getElementById('supplierBrowsePane').classList.remove('hidden');
+  document.getElementById('supplierOrdersPane').classList.add('hidden');
+  document.getElementById('supplierProductsWrap').classList.add('hidden');
+  document.getElementById('supplierListWrap').classList.remove('hidden');
+  loadSupplierList();
+}
+window.refreshSuppliersView = refreshSuppliersView;
+
+/* ============================================================
+   تصفح الموردين والمنتجات (لصاحب المحل)
+   ============================================================ */
+function wireSupplierBrowseUi() {
+  document.getElementById('backToSuppliersBtn').addEventListener('click', () => {
+    document.getElementById('supplierProductsWrap').classList.add('hidden');
+    document.getElementById('supplierListWrap').classList.remove('hidden');
+    supplierCart = [];
+    renderSupplierCart();
+  });
+  document.getElementById('supplierProductSearch').addEventListener('input', (e) => {
+    renderSupplierProducts(_currentSupplierProductsList, e.target.value);
+  });
+  document.getElementById('sendSupplierOrderBtn').addEventListener('click', sendSupplierOrder);
+}
+
+async function loadSupplierList() {
+  const listEl = document.getElementById('supplierList');
+  listEl.innerHTML = '<p class="hint">جارِ تحميل قائمة الموردين...</p>';
+  try {
+    const db = getFirebaseDb();
+    const snap = await withTimeout(db.ref('suppliers').once('value'));
+    const all = snap.val() || {};
+    const suppliers = Object.entries(all)
+      .map(([id, v]) => ({ id, ...v }))
+      .filter(s => (s.status || 'active') === 'active');
+
+    if (suppliers.length === 0) {
+      listEl.innerHTML = '<div class="empty-state"><span class="emoji">🚚</span>لا يوجد موردون معتمدون حاليًا.</div>';
+      return;
+    }
+    listEl.innerHTML = suppliers.map(s => `
+      <div class="supplier-card" data-id="${s.id}">
+        <h4>${escapeHtml(s.supplierName || s.name || 'مورّد')}</h4>
+        <span class="s-meta">📍 ${escapeHtml(s.city) || '-'}</span>
+        <span class="s-meta">📞 ${escapeHtml(s.phone) || '-'}</span>
+        ${s.categories ? `<div class="s-tags">${String(s.categories).split(',').map(c => `<span class="s-tag">${escapeHtml(c.trim())}</span>`).join('')}</div>` : ''}
+      </div>`).join('');
+    listEl.querySelectorAll('.supplier-card').forEach(card => {
+      card.addEventListener('click', () => openSupplierProducts(card.dataset.id, all[card.dataset.id].supplierName || all[card.dataset.id].name));
+    });
+  } catch (err) {
+    firebaseErrorToast(err);
+    listEl.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل الموردين. تحقق من الإنترنت.</div>';
   }
 }
 
@@ -1382,7 +1440,7 @@ async function openSupplierProducts(supplierId, supplierName) {
   selectedSupplierName = supplierName || 'مورّد';
   supplierCart = [];
   renderSupplierCart();
-  document.getElementById('supplierProductsTitle').textContent = منتجات: ${selectedSupplierName};
+  document.getElementById('supplierProductsTitle').textContent = `منتجات: ${selectedSupplierName}`;
   document.getElementById('supplierListWrap').classList.add('hidden');
   document.getElementById('supplierProductsWrap').classList.remove('hidden');
   document.getElementById('supplierProductSearch').value = '';
@@ -1398,7 +1456,7 @@ async function openSupplierProducts(supplierId, supplierName) {
 
     // تسجيل أن هذا المحل شاهد منتجات هذا المورّد (لإحصائية "عدد المحلات التي شاهدت منتجاته")
     const storeId = await getStoreId();
-    db.ref(productViews/${supplierId}/${storeId}).set(true).catch(() => {});
+    db.ref(`productViews/${supplierId}/${storeId}`).set(true).catch(() => {});
   } catch (err) {
     firebaseErrorToast(err);
     gridEl.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل منتجات هذا المورّد.</div>';
@@ -1413,9 +1471,9 @@ function renderSupplierProducts(list, filter = '') {
     gridEl.innerHTML = '<div class="empty-state"><span class="emoji">📦</span>لا توجد منتجات مطابقة.</div>';
     return;
   }
-  gridEl.innerHTML = filtered.map(p => 
+  gridEl.innerHTML = filtered.map(p => `
     <div class="supplier-product-card ${p.available === false ? 'unavailable' : ''}">
-      <div class="sp-img" style="${p.imageUrl ? background-image:url('${escapeHtml(p.imageUrl)}') : ''}">${p.imageUrl ? '' : '📦'}</div>
+      <div class="sp-img" style="${p.imageUrl ? `background-image:url('${escapeHtml(p.imageUrl)}')` : ''}">${p.imageUrl ? '' : '📦'}</div>
       <div class="sp-body">
         <span class="sp-name">${escapeHtml(p.name)}</span>
         <span class="sp-desc">${escapeHtml(p.description) || ''}</span>
@@ -1424,7 +1482,7 @@ function renderSupplierProducts(list, filter = '') {
           ${p.available === false ? 'غير متوفر' : '+ أضف للطلب'}
         </button>
       </div>
-    </div>).join('');
+    </div>`).join('');
 }
 
 function addToSupplierCart(productId) {
@@ -1434,7 +1492,7 @@ function addToSupplierCart(productId) {
   if (existing) existing.qty += 1;
   else supplierCart.push({ productId, name: p.name, price: Number(p.price) || 0, qty: 1 });
   renderSupplierCart();
-  showToast(تمت الإضافة: ${p.name}, 'success', 1400);
+  showToast(`تمت الإضافة: ${p.name}`, 'success', 1400);
 }
 window.addToSupplierCart = addToSupplierCart;
 
@@ -1443,7 +1501,7 @@ function renderSupplierCart() {
   if (supplierCart.length === 0) {
     el.innerHTML = '<div class="empty-cart">📨<br>لم تختر منتجات بعد لإرسال طلب شراء</div>';
   } else {
-    el.innerHTML = supplierCart.map((c, i) => 
+    el.innerHTML = supplierCart.map((c, i) => `
       <div class="cart-row">
         <span class="c-name">${escapeHtml(c.name)}<span class="c-sub">${money(c.price)}</span></span>
         <div class="qty-stepper">
@@ -1453,7 +1511,7 @@ function renderSupplierCart() {
         </div>
         <span>${c.qty}×</span>
         <button class="remove-btn" onclick="removeFromSupplierCart(${i})">✕</button>
-      </div>).join('');
+      </div>`).join('');
   }
   document.getElementById('supplierCartCount').textContent = supplierCart.reduce((a, c) => a + c.qty, 0);
 }
@@ -1515,17 +1573,17 @@ async function loadMyOrders() {
     const snap = await withTimeout(db.ref('orders').orderByChild('storeId').equalTo(storeId).once('value'));
     const all = snap.val() || {};
     const orders = Object.values(all).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    document.getElementById('myOrdersCount').textContent = ${orders.length} طلب;
+    document.getElementById('myOrdersCount').textContent = `${orders.length} طلب`;
     if (orders.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">📨</span>لم ترسل أي طلبات بعد.</div>'; return; }
     const statusLabel = { new: 'قيد الانتظار', seen: 'تمت المشاهدة', fulfilled: 'تم التجهيز' };
-    el.innerHTML = <table class="tbl"><thead><tr><th>التاريخ</th><th>المورّد</th><th>المنتجات</th><th>الحالة</th></tr></thead><tbody>
-      ${orders.map(o => <tr>
+    el.innerHTML = `<table class="tbl"><thead><tr><th>التاريخ</th><th>المورّد</th><th>المنتجات</th><th>الحالة</th></tr></thead><tbody>
+      ${orders.map(o => `<tr>
         <td>${fmtDate(o.createdAt)}</td>
         <td>${escapeHtml(o.supplierName)}</td>
-        <td>${o.items.map(i => ${escapeHtml(i.name)} × ${i.quantity}).join('، ')}</td>
+        <td>${o.items.map(i => `${escapeHtml(i.name)} × ${i.quantity}`).join('، ')}</td>
         <td><span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'قيد الانتظار'}</span></td>
-      </tr>).join('')}
-    </tbody></table>;
+      </tr>`).join('')}
+    </tbody></table>`;
   } catch (err) {
     firebaseErrorToast(err);
     el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل طلباتك.</div>';
@@ -1571,21 +1629,21 @@ async function loadSupplierOrdersInbox() {
     const snap = await withTimeout(db.ref('orders').orderByChild('supplierId').equalTo(currentSupplierSession.id).once('value'));
     const all = snap.val() || {};
     const orders = Object.entries(all).map(([key, v]) => ({ key, ...v })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    document.getElementById('supplierOrdersCount').textContent = ${orders.length} طلب;
+    document.getElementById('supplierOrdersCount').textContent = `${orders.length} طلب`;
     if (orders.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">📭</span>لا توجد طلبات واردة بعد.</div>'; return; }
     const statusLabel = { new: 'جديد', seen: 'تمت المشاهدة', fulfilled: 'تم التجهيز' };
-    el.innerHTML = <table class="tbl"><thead><tr><th>التاريخ</th><th>المحل</th><th>المنتجات</th><th>الحالة</th><th></th></tr></thead><tbody>
-      ${orders.map(o => <tr>
+    el.innerHTML = `<table class="tbl"><thead><tr><th>التاريخ</th><th>المحل</th><th>المنتجات</th><th>الحالة</th><th></th></tr></thead><tbody>
+      ${orders.map(o => `<tr>
         <td>${fmtDate(o.createdAt)}</td>
         <td>${escapeHtml(o.storeName)}</td>
-        <td>${o.items.map(i => ${escapeHtml(i.name)} × ${i.quantity}).join('، ')}</td>
+        <td>${o.items.map(i => `${escapeHtml(i.name)} × ${i.quantity}`).join('، ')}</td>
         <td><span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'جديد'}</span></td>
         <td>
-          ${o.status !== 'seen' && o.status !== 'fulfilled' ? <button class="link-btn" onclick="markOrderStatus('${o.key}','seen')">تمت المشاهدة</button> : ''}
-          ${o.status !== 'fulfilled' ? <button class="link-btn" onclick="markOrderStatus('${o.key}','fulfilled')">تم التجهيز</button> : ''}
+          ${o.status !== 'seen' && o.status !== 'fulfilled' ? `<button class="link-btn" onclick="markOrderStatus('${o.key}','seen')">تمت المشاهدة</button>` : ''}
+          ${o.status !== 'fulfilled' ? `<button class="link-btn" onclick="markOrderStatus('${o.key}','fulfilled')">تم التجهيز</button>` : ''}
         </td>
-      </tr>).join('')}
-    </tbody></table>;
+      </tr>`).join('')}
+    </tbody></table>`;
   } catch (err) {
     firebaseErrorToast(err);
     el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل الطلبات.</div>';
@@ -1610,7 +1668,7 @@ async function loadMySupplierProducts() {
     const snap = await withTimeout(db.ref('supplierProducts/' + currentSupplierSession.id).once('value'));
     const all = snap.val() || {};
     _mySupplierProductsCache = Object.entries(all).map(([id, v]) => ({ id, ...v }));
-    document.getElementById('supplierProductsCap').textContent = ${_mySupplierProductsCache.length} / ${SUPPLIER_PRODUCT_CAP} منتج;
+    document.getElementById('supplierProductsCap').textContent = `${_mySupplierProductsCache.length} / ${SUPPLIER_PRODUCT_CAP} منتج`;
     renderMySupplierProductsTable();
   } catch (err) {
     firebaseErrorToast(err);
@@ -1623,8 +1681,8 @@ function renderMySupplierProductsTable(filter = '') {
   const f = (filter || '').trim().toLowerCase();
   const list = f ? _mySupplierProductsCache.filter(p => (p.name || '').toLowerCase().includes(f) || (p.barcode || '').includes(f)) : _mySupplierProductsCache;
   if (list.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">📦</span>لا توجد منتجات بعد. أضف أول منتج لك.</div>'; return; }
-  el.innerHTML = <table class="tbl"><thead><tr><th>الاسم</th><th>الباركود</th><th>السعر</th><th>الحالة</th><th></th></tr></thead><tbody>
-    ${list.map(p => <tr>
+  el.innerHTML = `<table class="tbl"><thead><tr><th>الاسم</th><th>الباركود</th><th>السعر</th><th>الحالة</th><th></th></tr></thead><tbody>
+    ${list.map(p => `<tr>
       <td>${escapeHtml(p.name)}</td>
       <td>${escapeHtml(p.barcode)}</td>
       <td>${money(Number(p.price) || 0)}</td>
@@ -1633,8 +1691,8 @@ function renderMySupplierProductsTable(filter = '') {
         <button class="link-btn" onclick="editSupplierProduct('${p.id}')">تعديل</button>
         <button class="link-btn danger" onclick="deleteSupplierProduct('${p.id}')">حذف</button>
       </td>
-    </tr>).join('')}
-  </tbody></table>;
+    </tr>`).join('')}
+  </tbody></table>`;
 }
 
 function openSupplierProductModal(product = null) {
@@ -1659,11 +1717,11 @@ window.editSupplierProduct = editSupplierProduct;
 
 async function deleteSupplierProduct(id) {
   const p = _mySupplierProductsCache.find(x => x.id === id);
-  const ok = await confirmDialog('حذف المنتج', هل تريد حذف "${p ? p.name : ''}" من منتجاتك؟);
+  const ok = await confirmDialog('حذف المنتج', `هل تريد حذف "${p ? p.name : ''}" من منتجاتك؟`);
   if (!ok) return;
   try {
     const db = getFirebaseDb();
-    await db.ref(supplierProducts/${currentSupplierSession.id}/${id}).remove();
+    await db.ref(`supplierProducts/${currentSupplierSession.id}/${id}`).remove();
     showToast('تم حذف المنتج', 'info');
     loadMySupplierProducts();
   } catch (err) { firebaseErrorToast(err); }
@@ -1679,11 +1737,11 @@ async function submitSupplierProduct(e) {
 
   const isNew = !editingSupplierProductId;
   if (isNew && _mySupplierProductsCache.length >= SUPPLIER_PRODUCT_CAP) {
-    showToast(وصلت للحد الأقصى المسموح (${SUPPLIER_PRODUCT_CAP} منتج), 'error', 4500);
+    showToast(`وصلت للحد الأقصى المسموح (${SUPPLIER_PRODUCT_CAP} منتج)`, 'error', 4500);
     return;
   }
   const duplicate = _mySupplierProductsCache.find(p => p.barcode === barcode && p.id !== editingSupplierProductId);
-  if (duplicate) { showToast(الباركود مستخدم مسبقًا للمنتج "${duplicate.name}", 'error'); return; }
+  if (duplicate) { showToast(`الباركود مستخدم مسبقًا للمنتج "${duplicate.name}"`, 'error'); return; }
 
   const id = editingSupplierProductId || uid();
   const product = {
@@ -1695,7 +1753,7 @@ async function submitSupplierProduct(e) {
   };
   try {
     const db = getFirebaseDb();
-    await db.ref(supplierProducts/${currentSupplierSession.id}/${id}).set(product);
+    await db.ref(`supplierProducts/${currentSupplierSession.id}/${id}`).set(product);
     document.getElementById('supplierProductModal').classList.add('hidden');
     showToast(isNew ? 'تمت إضافة المنتج بنجاح ✅' : 'تم تحديث المنتج ✅', 'success');
     loadMySupplierProducts();
@@ -1716,11 +1774,11 @@ async function loadSupplierStats() {
     const viewsCount = Object.keys(viewsSnap.val() || {}).length;
     const productsCount = Object.keys(productsSnap.val() || {}).length;
 
-    grid.innerHTML = 
+    grid.innerHTML = `
       <div class="stat-card good"><div class="label">إجمالي الطلبات</div><div class="value">${orders.length}</div></div>
       <div class="stat-card"><div class="label">محلات شاهدت منتجاتك</div><div class="value">${viewsCount}</div></div>
       <div class="stat-card"><div class="label">عدد منتجاتك</div><div class="value">${productsCount} / ${SUPPLIER_PRODUCT_CAP}</div></div>
-    ;
+    `;
 
     const qtyMap = {};
     orders.forEach(o => (o.items || []).forEach(i => { qtyMap[i.name] = (qtyMap[i.name] || 0) + Number(i.quantity || 0); }));
@@ -1728,11 +1786,11 @@ async function loadSupplierStats() {
     const maxQty = top.length ? top[0][1] : 1;
     const topEl = document.getElementById('supplierTopProducts');
     topEl.innerHTML = top.length
-      ? top.map(([name, qty]) => 
+      ? top.map(([name, qty]) => `
           <div class="bar-row">
             <div class="bar-label"><span>${escapeHtml(name)}</span><b>${qty}</b></div>
             <div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, (qty / maxQty) * 100)}%"></div></div>
-          </div>).join('')
+          </div>`).join('')
       : '<p class="hint">لا توجد طلبات كافية بعد لعرض الأكثر طلبًا.</p>';
   } catch (err) {
     firebaseErrorToast(err);
