@@ -37,17 +37,22 @@ let _firebaseAuth = null;
 
 function initFirebase() {
   if (typeof firebase === 'undefined') {
-    throw new Error('تعذر تحميل مكتبة Firebase');
+    throw new Error('تعذر تحميل مكتبة Firebase. تحقق من اتصال الإنترنت.');
   }
 
   if (!_firebaseApp) {
-    _firebaseApp = firebase.apps.length
+    _firebaseApp = firebase.apps && firebase.apps.length
       ? firebase.app()
       : firebase.initializeApp(FIREBASE_CONFIG);
   }
 
-  _firebaseDb = firebase.database();
-  _firebaseAuth = firebase.auth();
+  if (!_firebaseDb) {
+    _firebaseDb = firebase.database();
+  }
+
+  if (!_firebaseAuth) {
+    _firebaseAuth = firebase.auth();
+  }
 
   return {
     db: _firebaseDb,
