@@ -1254,77 +1254,6 @@ function wireSettings() {
 }
 
 
-/* =========================================================
-   3) ميزة الموردين (Firebase Realtime Database)
-   ========================================================= */
-
-const SUPPLIER_PRODUCT_CAP = 1600;
-
-let currentSupplierSession = null; // { id, name }
-let selectedSupplierId = null;
-let selectedSupplierName = '';
-let supplierCart = []; // [{productId, name, price, qty}]
-let editingSupplierProductId = null;
-let _storeIdCache = null;
-let _mySupplierProductsCache = [];
-
-document.addEventListener('DOMContentLoaded', async () => {
-  // نربط كل جزء بشكل منفصل ومحمي: إذا فشل جزء واحد لأي سبب،
-  // يبقى باقي الأجزاء (زر الدخول، التبويبات...) يعمل بشكل طبيعي.
-  safeRun(wireSupplierLoginUi);
-  safeRun(wireSupplierTabs);
-  safeRun(wireSupplierBrowseUi);
-  safeRun(wireSupplierDashboardUi);
-
-  // ربط مباشر إضافي لزر "الموردين" في القائمة الجانبية (احتياطي مستقل
-  // عن أي كود آخر) لضمان عمل القسم حتى لو تغيّر أي شيء في مكان آخر.
-  const suppliersNavBtn = document.querySelector('.nav-btn[data-view="suppliers"]');
-  if (suppliersNavBtn) suppliersNavBtn.addEventListener('click', () => safeRun(refreshSuppliersView));
-
-  try {
-    const saved = await dbGet('settings', 'supplierSession');
-    if (saved && saved.id) {
-      currentSupplierSession = { id: saved.id, name: saved.name };
-      showSupplierShell();
-    }
-  } catch (err) { /* لا توجد جلسة محفوظة */ }
-});
-
-function safeRun(fn) {
-  try { return fn(); } catch (err) { console.error('خطأ في ميزة الموردين:', err); }
-}
-
-/* استدعاء أي وعد (Promise) مع مهلة قصوى؛ إذا لم يستجب الخادم خلال المهلة
-   نعتبرها فشلاً بدل أن تبقى الشاشة عالقة على "جارِ التحميل" للأبد. */
-function withTimeout(promise, ms = 9000) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('انتهت مهلة الاتصال بالخادم')), ms)),
-  ]);
-}
-
-async function getStoreId() {
-  if (_storeIdCache) return _storeIdCache;
-  let row = await dbGet('settings', 'storeId');
-  if (!row) {
-    row = { key: 'storeId', id: uid() };
-    await dbAdd('settings', row);
-  }
-  _storeIdCache = row.id;
-  return _storeIdCache;
-}
-
-function firebaseErrorToast(err) {
-  console.error(err);
-  const isTimeout = err && /مهلة/.test(err.message || '');
-  showToast(
-    isTimeout
-      ? 'انتهت مهلة الاتصال بخادم الموردين. تحقق من الإنترنت وحاول مرة أخرى.'
-      : 'تعذر الاتصال بخادم الموردين. تحقق من اتصال الإنترنت أو من إعدادات Firebase وحاول مرة أخرى.',
-    'error', 4500
-  );
-}
-
 async function attemptSupplierLogin() {
   const user = document.getElementById('supplierLoginUser').value.trim();
   const pass = document.getElementById('supplierLoginPass').value;
@@ -1342,33 +1271,38 @@ async function attemptSupplierLogin() {
   okBtn.textContent = 'جارِ التحقق...';
 
   try {
-    // تسجيل الدخول من Firebase Authentication
+    // Firebase Authentication
     const auth = getFirebaseAuth();
 
-    const userCredential = await auth.signInWithEmailAndPassword(
+    const result = await auth.signInWithEmailAndPassword(
       user,
       pass
     );
 
-    const firebaseUser = userCredential.user;
+    const firebaseUser = result.user;
 
-    // جلب بيانات المورد من قاعدة البيانات (اختياري)
+    // جلب بيانات المورد من قاعدة البيانات
     const db = getFirebaseDb();
+
     const snap = await withTimeout(
       db.ref('suppliers/' + firebaseUser.uid).once('value')
     );
 
     const supplierData = snap.val() || {};
 
+    // فحص حالة الحساب
     if (
       supplierData.status === 'suspended' ||
       supplierData.status === 'disabled'
     ) {
       await auth.signOut();
-      errEl.textContent = 'تم إيقاف هذا الحساب. تواصل مع إدارة دكاني الذكي.';
+
+      errEl.textContent =
+        'تم إيقاف هذا الحساب. تواصل مع إدارة دكاني الذكي.';
       return;
     }
 
+    // حفظ جلسة المورد
     currentSupplierSession = {
       id: firebaseUser.uid,
       name:
@@ -1384,104 +1318,44 @@ async function attemptSupplierLogin() {
       name: currentSupplierSession.name
     });
 
-    document.getElementById('supplierLoginModal').classList.add('hidden');
+    document
+      .getElementById('supplierLoginModal')
+      .classList.add('hidden');
 
     showSupplierShell();
 
   } catch (err) {
-    console.error('Firebase Login Error:', err);
 
-    if (err.code === 'auth/user-not-found') {
-      errEl.textContent = 'الحساب غير موجود';
-    } 
-    else if (err.code === 'auth/wrong-password') {
-      errEl.textContent = 'كلمة المرور غير صحيحة';
-    } 
-    else if (err.code === 'auth/invalid-email') {
-      errEl.textContent = 'البريد الإلكتروني غير صحيح';
-    } 
-    else if (err.code === 'auth/invalid-credential') {
-      errEl.textContent = 'بيانات الدخول غير صحيحة';
-    }
-    else {
-      errEl.textContent = 'حدث خطأ أثناء تسجيل الدخول';
+    console.error('Supplier Login Error:', err);
+
+    switch (err.code) {
+      case 'auth/user-not-found':
+        errEl.textContent = 'الحساب غير موجود';
+        break;
+
+      case 'auth/wrong-password':
+        errEl.textContent = 'كلمة المرور غير صحيحة';
+        break;
+
+      case 'auth/invalid-email':
+        errEl.textContent = 'البريد الإلكتروني غير صحيح';
+        break;
+
+      case 'auth/invalid-credential':
+        errEl.textContent = 'بيانات الدخول غير صحيحة';
+        break;
+
+      default:
+        errEl.textContent =
+          'حدث خطأ أثناء تسجيل الدخول';
+        break;
     }
 
   } finally {
+
     okBtn.disabled = false;
     okBtn.textContent = 'دخول';
-  }
-}
-/* ============================================================
-   تبويبات قسم الموردين (لصاحب المحل)
-   ============================================================ */
-function wireSupplierTabs() {
-  document.getElementById('supplierTabs').addEventListener('click', (e) => {
-    const btn = e.target.closest('.tab');
-    if (!btn) return;
-    document.querySelectorAll('#supplierTabs .tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    const tab = btn.dataset.stab;
-    document.getElementById('supplierBrowsePane').classList.toggle('hidden', tab !== 'browse');
-    document.getElementById('supplierOrdersPane').classList.toggle('hidden', tab !== 'orders');
-    if (tab === 'orders') loadMyOrders();
-  });
-}
 
-function refreshSuppliersView() {
-  document.querySelectorAll('#supplierTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.stab === 'browse'));
-  document.getElementById('supplierBrowsePane').classList.remove('hidden');
-  document.getElementById('supplierOrdersPane').classList.add('hidden');
-  document.getElementById('supplierProductsWrap').classList.add('hidden');
-  document.getElementById('supplierListWrap').classList.remove('hidden');
-  loadSupplierList();
-}
-window.refreshSuppliersView = refreshSuppliersView;
-
-/* ============================================================
-   تصفح الموردين والمنتجات (لصاحب المحل)
-   ============================================================ */
-function wireSupplierBrowseUi() {
-  document.getElementById('backToSuppliersBtn').addEventListener('click', () => {
-    document.getElementById('supplierProductsWrap').classList.add('hidden');
-    document.getElementById('supplierListWrap').classList.remove('hidden');
-    supplierCart = [];
-    renderSupplierCart();
-  });
-  document.getElementById('supplierProductSearch').addEventListener('input', (e) => {
-    renderSupplierProducts(_currentSupplierProductsList, e.target.value);
-  });
-  document.getElementById('sendSupplierOrderBtn').addEventListener('click', sendSupplierOrder);
-}
-
-async function loadSupplierList() {
-  const listEl = document.getElementById('supplierList');
-  listEl.innerHTML = '<p class="hint">جارِ تحميل قائمة الموردين...</p>';
-  try {
-    const db = getFirebaseDb();
-    const snap = await withTimeout(db.ref('suppliers').once('value'));
-    const all = snap.val() || {};
-    const suppliers = Object.entries(all)
-      .map(([id, v]) => ({ id, ...v }))
-      .filter(s => (s.status || 'active') === 'active');
-
-    if (suppliers.length === 0) {
-      listEl.innerHTML = '<div class="empty-state"><span class="emoji">🚚</span>لا يوجد موردون معتمدون حاليًا.</div>';
-      return;
-    }
-    listEl.innerHTML = suppliers.map(s => `
-      <div class="supplier-card" data-id="${s.id}">
-        <h4>${escapeHtml(s.supplierName || s.name || 'مورّد')}</h4>
-        <span class="s-meta">📍 ${escapeHtml(s.city) || '-'}</span>
-        <span class="s-meta">📞 ${escapeHtml(s.phone) || '-'}</span>
-        ${s.categories ? `<div class="s-tags">${String(s.categories).split(',').map(c => `<span class="s-tag">${escapeHtml(c.trim())}</span>`).join('')}</div>` : ''}
-      </div>`).join('');
-    listEl.querySelectorAll('.supplier-card').forEach(card => {
-      card.addEventListener('click', () => openSupplierProducts(card.dataset.id, all[card.dataset.id].supplierName || all[card.dataset.id].name));
-    });
-  } catch (err) {
-    firebaseErrorToast(err);
-    listEl.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل الموردين. تحقق من الإنترنت.</div>';
   }
 }
 
