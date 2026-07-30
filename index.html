@@ -62,6 +62,7 @@
       <button class="nav-btn" data-view="cashier"><i class="ic ic-cart"></i><span>شاشة الكاشير</span></button>
       <button class="nav-btn" data-view="products"><i class="ic ic-box"></i><span>إدارة المنتجات</span></button>
       <button class="nav-btn" data-view="inventory"><i class="ic ic-stack"></i><span>المخزون</span></button>
+      <button class="nav-btn" data-view="suppliers"><i class="ic ic-truck"></i><span>الموردين</span></button>
       <button class="nav-btn" data-view="invoices"><i class="ic ic-receipt"></i><span>الفواتير</span></button>
       <button class="nav-btn" data-view="debts"><i class="ic ic-wallet"></i><span>الديون</span></button>
       <button class="nav-btn" data-view="reports"><i class="ic ic-chart"></i><span>التقارير</span></button>
@@ -69,6 +70,7 @@
       <button class="nav-btn" data-view="settings"><i class="ic ic-gear"></i><span>الإعدادات</span></button>
     </nav>
     <div class="sidebar-foot">
+      <button id="supplierLoginLink" type="button" class="supplier-login-link">🚚 دخول كمورّد</button>
       <span class="version-tag">دكاني الذكي • v2</span>
     </div>
   </aside>
@@ -128,10 +130,7 @@
             <span>الإجمالي</span>
             <strong id="cartTotal">0.00 ₪</strong>
           </div>
-          <button id="checkoutBtn" class="btn-primary full checkout-btn">✅ إتمام البيع</button>
-          <div id="checkoutProgressWrap" class="checkout-progress-wrap hidden">
-            <div id="checkoutProgressBar" class="checkout-progress-bar"></div>
-          </div>
+          <button id="checkoutBtn" class="btn-primary full">✅ إتمام البيع</button>
           <button id="clearCartBtn" class="btn-text full">إفراغ السلة</button>
         </div>
       </div>
@@ -178,6 +177,49 @@
           </div>
         </div>
         <div id="inventoryTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <!-- الموردون -->
+    <section id="view-suppliers" class="view">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>الموردون</h3>
+          <div class="tabs" id="supplierTabs">
+            <button class="tab active" data-stab="browse">تصفح الموردين</button>
+            <button class="tab" data-stab="orders">طلباتي</button>
+          </div>
+        </div>
+        <p class="hint">تصفح منتجات الموردين المعتمدين واطلب البضاعة مباشرة من داخل النظام بدل الاتصال أو الواتساب. تحتاج هذه الميزة اتصالًا بالإنترنت.</p>
+      </div>
+
+      <div id="supplierBrowsePane">
+        <div id="supplierListWrap" class="panel">
+          <h3>الموردون المعتمدون</h3>
+          <div id="supplierList" class="supplier-grid"><p class="hint">جارِ التحميل...</p></div>
+        </div>
+
+        <div id="supplierProductsWrap" class="cashier-grid hidden">
+          <div class="panel cashier-left">
+            <div class="panel-head">
+              <h3 id="supplierProductsTitle">منتجات المورد</h3>
+              <button id="backToSuppliersBtn" type="button" class="btn-text">⟵ الموردون</button>
+            </div>
+            <input type="text" id="supplierProductSearch" placeholder="ابحث عن منتج بالاسم أو الباركود...">
+            <div id="supplierProductsGrid" class="supplier-products-grid"></div>
+          </div>
+          <div class="panel cashier-right">
+            <h3>طلب الشراء الحالي</h3>
+            <div id="supplierCartTable" class="cart-table"></div>
+            <div class="cart-total"><span>عدد الأصناف</span><strong id="supplierCartCount">0</strong></div>
+            <button id="sendSupplierOrderBtn" class="btn-primary full">📨 إرسال الطلب للمورد</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="supplierOrdersPane" class="panel hidden">
+        <div class="panel-head"><h3>طلباتي المرسلة</h3><span id="myOrdersCount" class="count-chip"></span></div>
+        <div id="myOrdersTable" class="data-table"></div>
       </div>
     </section>
 
@@ -316,10 +358,111 @@
   </div>
 </div>
 
+<!-- ===== نافذة دخول المورد ===== -->
+<div id="supplierLoginModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>دخول المورد</h3>
+    <p class="hint">هذا الدخول مخصص للموردين المعتمدين فقط. بيانات الدخول تُعطى لك من إدارة دكاني الذكي.</p>
+    <label class="hint" style="display:block;margin-top:10px;">اسم المستخدم أو رقم الهاتف</label>
+    <input type="text" id="supplierLoginUser" placeholder="اسم المستخدم">
+    <label class="hint" style="display:block;margin-top:8px;">كلمة المرور</label>
+    <input type="password" id="supplierLoginPass" placeholder="كلمة المرور">
+    <p id="supplierLoginError" class="hint" style="color:var(--brick);"></p>
+    <div class="modal-actions">
+      <button id="supplierLoginCancel" class="btn-ghost">إلغاء</button>
+      <button id="supplierLoginOk" class="btn-primary">دخول</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== نافذة إضافة/تعديل منتج المورد ===== -->
+<div id="supplierProductModal" class="modal-overlay hidden">
+  <div class="modal-card" style="max-width:460px;">
+    <h3 id="supplierProductModalTitle">إضافة منتج</h3>
+    <form id="supplierProductForm" class="grid-form" style="margin-top:10px;">
+      <input type="hidden" id="spId">
+      <input type="text" id="spName" placeholder="اسم المنتج" required>
+      <input type="text" id="spBarcode" placeholder="الباركود" required>
+      <input type="number" step="0.01" id="spPrice" placeholder="السعر" required>
+      <input type="text" id="spImageUrl" placeholder="رابط صورة المنتج (اختياري)">
+      <input type="text" id="spDescription" placeholder="وصف مختصر (اختياري)" style="grid-column:1/-1;">
+      <label class="check-row" style="grid-column:1/-1;"><input type="checkbox" id="spAvailable" checked> متوفر حاليًا</label>
+      <div class="modal-actions" style="grid-column:1/-1;margin-top:0;">
+        <button type="button" id="supplierProductCancel" class="btn-ghost">إلغاء</button>
+        <button type="submit" class="btn-primary">حفظ المنتج</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== لوحة تحكم المورد ===== -->
+<div id="supplierShell" class="app-shell hidden">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="tatreez-band small" aria-hidden="true">
+        <svg viewBox="0 0 220 12" preserveAspectRatio="none"><rect width="220" height="12" fill="url(#tatreezPattern)" class="tatreez-fill"/></svg>
+      </div>
+      <h2 class="brand-small">لوحة <span>المورّد</span></h2>
+      <p id="supplierNameLabel" class="store-name"></p>
+    </div>
+    <nav class="nav" id="supplierNav">
+      <button class="nav-btn active" data-sview="orders"><i class="ic ic-receipt"></i><span>الطلبات الجديدة</span></button>
+      <button class="nav-btn" data-sview="products"><i class="ic ic-box"></i><span>منتجاتي</span></button>
+      <button class="nav-btn" data-sview="stats"><i class="ic ic-chart"></i><span>الإحصائيات</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="supplierLogoutBtn" type="button" class="supplier-login-link">🚪 تسجيل الخروج</button>
+      <span class="version-tag">دكاني الذكي • بوابة الموردين</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div><h1>لوحة تحكم المورّد</h1><p class="view-subtitle">إدارة طلباتك ومنتجاتك المعروضة على أصحاب المحلات</p></div>
+      <div class="topbar-right"><span id="supplierUserChip" class="user-chip"></span></div>
+    </header>
+
+    <section id="sview-orders" class="view active">
+      <div class="panel">
+        <div class="panel-head"><h3>الطلبات الواردة</h3><span id="supplierOrdersCount" class="count-chip"></span></div>
+        <div id="supplierOrdersTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <section id="sview-products" class="view">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>منتجاتي</h3>
+          <span id="supplierProductsCap" class="count-chip"></span>
+        </div>
+        <div class="btn-row">
+          <button id="addSupplierProductBtn" class="btn-primary">+ إضافة منتج جديد</button>
+        </div>
+      </div>
+      <div class="panel">
+        <input type="text" id="supplierMyProductsSearch" placeholder="ابحث في منتجاتك...">
+        <div id="supplierMyProductsTable" class="data-table"></div>
+      </div>
+    </section>
+
+    <section id="sview-stats" class="view">
+      <div class="stat-grid" id="supplierStatGrid"></div>
+      <div class="panel">
+        <h3>الأكثر طلبًا من منتجاتك</h3>
+        <div id="supplierTopProducts" class="bar-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="js/db.js"></script>
 <script src="js/barcode.js"></script>
 <script src="js/app.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/suppliers.js"></script>
 </body>
 </html>
