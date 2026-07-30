@@ -21,20 +21,52 @@
    عبر IndexedDB ولا يحتاج إنترنت.
    ========================================================= */
 const FIREBASE_CONFIG = {
-  databaseURL: 'https://respict-212a7-default-rtdb.firebaseio.com/',
+  apiKey: "AIzaSyCc0B_xCY3cwilBbRZ3g6Kz65XEMmvo8Rk",
+  authDomain: "respict-212a7.firebaseapp.com",
+  databaseURL: "https://respict-212a7-default-rtdb.firebaseio.com",
+  projectId: "respict-212a7",
+  storageBucket: "respict-212a7.firebasestorage.app",
+  messagingSenderId: "531604352837",
+  appId: "1:531604352837:web:3a1bc13f75c9dbd329d82c",
+  measurementId: "G-M5G726058Q"
 };
+
 let _firebaseApp = null;
 let _firebaseDb = null;
-function getFirebaseDb() {
-  if (_firebaseDb) return _firebaseDb;
+let _firebaseAuth = null;
+
+function initFirebase() {
   if (typeof firebase === 'undefined') {
-    throw new Error('تعذر تحميل مكتبة Firebase. تحقق من اتصالك بالإنترنت.');
+    throw new Error('تعذر تحميل مكتبة Firebase');
   }
+
   if (!_firebaseApp) {
-    _firebaseApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+    _firebaseApp = firebase.apps.length
+      ? firebase.app()
+      : firebase.initializeApp(FIREBASE_CONFIG);
   }
+
   _firebaseDb = firebase.database();
+  _firebaseAuth = firebase.auth();
+
+  return {
+    db: _firebaseDb,
+    auth: _firebaseAuth
+  };
+}
+
+function getFirebaseDb() {
+  if (!_firebaseDb) {
+    initFirebase();
+  }
   return _firebaseDb;
+}
+
+function getFirebaseAuth() {
+  if (!_firebaseAuth) {
+    initFirebase();
+  }
+  return _firebaseAuth;
 }
 
 
