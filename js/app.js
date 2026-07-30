@@ -1325,78 +1325,93 @@ function firebaseErrorToast(err) {
   );
 }
 
-/* ============================================================
-   دخول المورد
-   ============================================================ */
-function wireSupplierLoginUi() {
-  document.getElementById('supplierLoginLink').addEventListener('click', () => {
-    document.getElementById('supplierLoginUser').value = '';
-    document.getElementById('supplierLoginPass').value = '';
-    document.getElementById('supplierLoginError').textContent = '';
-    document.getElementById('supplierLoginModal').classList.remove('hidden');
-  });
-  document.getElementById('supplierLoginCancel').addEventListener('click', () => {
-    document.getElementById('supplierLoginModal').classList.add('hidden');
-  });
-  document.getElementById('supplierLoginModal').addEventListener('click', (e) => {
-    if (e.target.id === 'supplierLoginModal') document.getElementById('supplierLoginCancel').click();
-  });
-  document.getElementById('supplierLoginOk').addEventListener('click', attemptSupplierLogin);
-  document.getElementById('supplierLogoutBtn').addEventListener('click', async () => {
-    const ok = await confirmDialog('تسجيل الخروج', 'هل تريد تسجيل الخروج من لوحة المورّد؟');
-    if (!ok) return;
-    await dbDelete('settings', 'supplierSession');
-    location.reload();
-  });
-}
-
 async function attemptSupplierLogin() {
   const user = document.getElementById('supplierLoginUser').value.trim();
   const pass = document.getElementById('supplierLoginPass').value;
   const errEl = document.getElementById('supplierLoginError');
+
   errEl.textContent = '';
-  if (!user || !pass) { errEl.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور'; return; }
+
+  if (!user || !pass) {
+    errEl.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
+    return;
+  }
 
   const okBtn = document.getElementById('supplierLoginOk');
   okBtn.disabled = true;
   okBtn.textContent = 'جارِ التحقق...';
+
   try {
+    // تسجيل الدخول من Firebase Authentication
+    const auth = getFirebaseAuth();
+
+    const userCredential = await auth.signInWithEmailAndPassword(
+      user,
+      pass
+    );
+
+    const firebaseUser = userCredential.user;
+
+    // جلب بيانات المورد من قاعدة البيانات (اختياري)
     const db = getFirebaseDb();
-    const snap = await withTimeout(db.ref('suppliers').once('value'));
-    const all = snap.val() || {};
-    let matchId = null, matchVal = null;
-    Object.entries(all).forEach(([key, val]) => {
-      if (matchId) return;
-      const uMatch = val.username === user || val.phone === user;
-      if (uMatch && val.password === pass) { matchId = key; matchVal = val; }
-    });
-    if (!matchId) { errEl.textContent = 'بيانات الدخول غير صحيحة'; return; }
-    if (matchVal.status === 'suspended' || matchVal.status === 'disabled') {
+    const snap = await withTimeout(
+      db.ref('suppliers/' + firebaseUser.uid).once('value')
+    );
+
+    const supplierData = snap.val() || {};
+
+    if (
+      supplierData.status === 'suspended' ||
+      supplierData.status === 'disabled'
+    ) {
+      await auth.signOut();
       errEl.textContent = 'تم إيقاف هذا الحساب. تواصل مع إدارة دكاني الذكي.';
       return;
     }
-    currentSupplierSession = { id: matchId, name: matchVal.supplierName || matchVal.name || 'مورّد' };
-    await dbAdd('settings', { key: 'supplierSession', id: matchId, name: currentSupplierSession.name });
+
+    currentSupplierSession = {
+      id: firebaseUser.uid,
+      name:
+        supplierData.supplierName ||
+        supplierData.name ||
+        firebaseUser.email ||
+        'مورّد'
+    };
+
+    await dbAdd('settings', {
+      key: 'supplierSession',
+      id: firebaseUser.uid,
+      name: currentSupplierSession.name
+    });
+
     document.getElementById('supplierLoginModal').classList.add('hidden');
+
     showSupplierShell();
+
   } catch (err) {
-    console.error(err);
-    errEl.textContent = 'تعذر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.';
+    console.error('Firebase Login Error:', err);
+
+    if (err.code === 'auth/user-not-found') {
+      errEl.textContent = 'الحساب غير موجود';
+    } 
+    else if (err.code === 'auth/wrong-password') {
+      errEl.textContent = 'كلمة المرور غير صحيحة';
+    } 
+    else if (err.code === 'auth/invalid-email') {
+      errEl.textContent = 'البريد الإلكتروني غير صحيح';
+    } 
+    else if (err.code === 'auth/invalid-credential') {
+      errEl.textContent = 'بيانات الدخول غير صحيحة';
+    }
+    else {
+      errEl.textContent = 'حدث خطأ أثناء تسجيل الدخول';
+    }
+
   } finally {
     okBtn.disabled = false;
     okBtn.textContent = 'دخول';
   }
 }
-
-function showSupplierShell() {
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('appShell').classList.add('hidden');
-  document.getElementById('supplierShell').classList.remove('hidden');
-  document.getElementById('supplierNameLabel').textContent = currentSupplierSession.name;
-  document.getElementById('supplierUserChip').textContent = `مرحبًا، ${currentSupplierSession.name}`;
-  switchSupplierView('orders');
-}
-
 /* ============================================================
    تبويبات قسم الموردين (لصاحب المحل)
    ============================================================ */
