@@ -6,7 +6,7 @@ const GOOGLE_CLIENT_ID = '479200763607-b6h7ibe8qc1cacees0p0l2juig154pbf.apps.goo
 
 const viewTitles = {
   dashboard: 'لوحة المعلومات', cashier: 'شاشة الكاشير', products: 'إدارة المنتجات',
-  inventory: 'المخزون', invoices: 'الفواتير', debts: 'الديون',
+  inventory: 'المخزون', suppliers: 'الموردون', invoices: 'الفواتير', debts: 'الديون',
   reports: 'التقارير', employees: 'الموظفون', settings: 'الإعدادات',
 };
 const viewSubtitles = {
@@ -14,6 +14,7 @@ const viewSubtitles = {
   cashier: 'امسح، ابحث، وبِع بسرعة',
   products: 'أضف وعدّل منتجاتك وأسعارها',
   inventory: 'تابع الكميات وتواريخ الصلاحية',
+  suppliers: 'اطلب البضاعة من الموردين مباشرة',
   invoices: 'كل عمليات البيع السابقة',
   debts: 'ديون الزبائن والدفعات',
   reports: 'الأرباح والمبيعات الأكثر رواجًا',
@@ -418,6 +419,7 @@ function wireNav() {
       if (view === 'reports') refreshReports();
       if (view === 'employees') refreshEmployeesTable();
       if (view === 'cashier') { refreshQuickCats(); refreshCashierEmployeeSelect(); }
+      if (view === 'suppliers' && window.refreshSuppliersView) window.refreshSuppliersView();
     });
   });
 }
