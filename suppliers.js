@@ -13,10 +13,17 @@ let _storeIdCache = null;
 let _mySupplierProductsCache = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  wireSupplierLoginUi();
-  wireSupplierTabs();
-  wireSupplierBrowseUi();
-  wireSupplierDashboardUi();
+  // نربط كل جزء بشكل منفصل ومحمي: إذا فشل جزء واحد لأي سبب،
+  // يبقى باقي الأجزاء (زر الدخول، التبويبات...) يعمل بشكل طبيعي.
+  safeRun(wireSupplierLoginUi);
+  safeRun(wireSupplierTabs);
+  safeRun(wireSupplierBrowseUi);
+  safeRun(wireSupplierDashboardUi);
+
+  // ربط مباشر إضافي لزر "الموردين" في القائمة الجانبية (احتياطي مستقل
+  // عن أي كود آخر) لضمان عمل القسم حتى لو تغيّر أي شيء في مكان آخر.
+  const suppliersNavBtn = document.querySelector('.nav-btn[data-view="suppliers"]');
+  if (suppliersNavBtn) suppliersNavBtn.addEventListener('click', () => safeRun(refreshSuppliersView));
 
   try {
     const saved = await dbGet('settings', 'supplierSession');
@@ -26,6 +33,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (err) { /* لا توجد جلسة محفوظة */ }
 });
+
+function safeRun(fn) {
+  try { return fn(); } catch (err) { console.error('خطأ في ميزة الموردين:', err); }
+}
+
+/* استدعاء أي وعد (Promise) مع مهلة قصوى؛ إذا لم يستجب الخادم خلال المهلة
+   نعتبرها فشلاً بدل أن تبقى الشاشة عالقة على "جارِ التحميل" للأبد. */
+function withTimeout(promise, ms = 9000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('انتهت مهلة الاتصال بالخادم')), ms)),
+  ]);
+}
 
 async function getStoreId() {
   if (_storeIdCache) return _storeIdCache;
@@ -40,7 +60,13 @@ async function getStoreId() {
 
 function firebaseErrorToast(err) {
   console.error(err);
-  showToast('تعذر الاتصال بخادم الموردين. تحقق من اتصال الإنترنت وحاول مرة أخرى.', 'error', 4500);
+  const isTimeout = err && /مهلة/.test(err.message || '');
+  showToast(
+    isTimeout
+      ? 'انتهت مهلة الاتصال بخادم الموردين. تحقق من الإنترنت وحاول مرة أخرى.'
+      : 'تعذر الاتصال بخادم الموردين. تحقق من اتصال الإنترنت أو من إعدادات Firebase وحاول مرة أخرى.',
+    'error', 4500
+  );
 }
 
 /* ============================================================
@@ -80,7 +106,7 @@ async function attemptSupplierLogin() {
   okBtn.textContent = 'جارِ التحقق...';
   try {
     const db = getFirebaseDb();
-    const snap = await db.ref('suppliers').once('value');
+    const snap = await withTimeout(db.ref('suppliers').once('value'));
     const all = snap.val() || {};
     let matchId = null, matchVal = null;
     Object.entries(all).forEach(([key, val]) => {
@@ -162,7 +188,7 @@ async function loadSupplierList() {
   listEl.innerHTML = '<p class="hint">جارِ تحميل قائمة الموردين...</p>';
   try {
     const db = getFirebaseDb();
-    const snap = await db.ref('suppliers').once('value');
+    const snap = await withTimeout(db.ref('suppliers').once('value'));
     const all = snap.val() || {};
     const suppliers = Object.entries(all)
       .map(([id, v]) => ({ id, ...v }))
@@ -204,7 +230,7 @@ async function openSupplierProducts(supplierId, supplierName) {
 
   try {
     const db = getFirebaseDb();
-    const snap = await db.ref('supplierProducts/' + supplierId).once('value');
+    const snap = await withTimeout(db.ref('supplierProducts/' + supplierId).once('value'));
     const all = snap.val() || {};
     _currentSupplierProductsList = Object.entries(all).map(([id, v]) => ({ id, ...v }));
     renderSupplierProducts(_currentSupplierProductsList);
@@ -325,7 +351,7 @@ async function loadMyOrders() {
   try {
     const db = getFirebaseDb();
     const storeId = await getStoreId();
-    const snap = await db.ref('orders').orderByChild('storeId').equalTo(storeId).once('value');
+    const snap = await withTimeout(db.ref('orders').orderByChild('storeId').equalTo(storeId).once('value'));
     const all = snap.val() || {};
     const orders = Object.values(all).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     document.getElementById('myOrdersCount').textContent = `${orders.length} طلب`;
@@ -381,7 +407,7 @@ async function loadSupplierOrdersInbox() {
   el.innerHTML = '<p class="hint">جارِ التحميل...</p>';
   try {
     const db = getFirebaseDb();
-    const snap = await db.ref('orders').orderByChild('supplierId').equalTo(currentSupplierSession.id).once('value');
+    const snap = await withTimeout(db.ref('orders').orderByChild('supplierId').equalTo(currentSupplierSession.id).once('value'));
     const all = snap.val() || {};
     const orders = Object.entries(all).map(([key, v]) => ({ key, ...v })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     document.getElementById('supplierOrdersCount').textContent = `${orders.length} طلب`;
@@ -420,7 +446,7 @@ async function loadMySupplierProducts() {
   el.innerHTML = '<p class="hint">جارِ التحميل...</p>';
   try {
     const db = getFirebaseDb();
-    const snap = await db.ref('supplierProducts/' + currentSupplierSession.id).once('value');
+    const snap = await withTimeout(db.ref('supplierProducts/' + currentSupplierSession.id).once('value'));
     const all = snap.val() || {};
     _mySupplierProductsCache = Object.entries(all).map(([id, v]) => ({ id, ...v }));
     document.getElementById('supplierProductsCap').textContent = `${_mySupplierProductsCache.length} / ${SUPPLIER_PRODUCT_CAP} منتج`;
@@ -520,11 +546,11 @@ async function loadSupplierStats() {
   grid.innerHTML = '<p class="hint">جارِ التحميل...</p>';
   try {
     const db = getFirebaseDb();
-    const [ordersSnap, viewsSnap, productsSnap] = await Promise.all([
+    const [ordersSnap, viewsSnap, productsSnap] = await withTimeout(Promise.all([
       db.ref('orders').orderByChild('supplierId').equalTo(currentSupplierSession.id).once('value'),
       db.ref('productViews/' + currentSupplierSession.id).once('value'),
       db.ref('supplierProducts/' + currentSupplierSession.id).once('value'),
-    ]);
+    ]));
     const orders = Object.values(ordersSnap.val() || {});
     const viewsCount = Object.keys(viewsSnap.val() || {}).length;
     const productsCount = Object.keys(productsSnap.val() || {}).length;
