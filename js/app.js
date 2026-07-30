@@ -37,22 +37,10 @@ const FIREBASE_CONFIG = {
   appId: "1:531604352837:web:3a1bc13f75c9dbd329d82c",
   measurementId: "G-M5G726058Q"
 };
-let _firebaseApp = null;
-let _firebaseDb = null;
-function getFirebaseDb() {
-  if (_firebaseDb) return _firebaseDb;
-  if (typeof firebase === 'undefined') {
-    throw new Error('تعذر تحميل مكتبة Firebase. تحقق من اتصالك بالإنترنت.');
-  }
-  if (!_firebaseApp) {
-    _firebaseApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
-  }
-  _firebaseDb = firebase.database();
-  return _firebaseDb;
-}
 
 let _firebaseApp = null;
 let _firebaseDb = null;
+
 function getFirebaseDb() {
   if (_firebaseDb) return _firebaseDb;
   if (typeof firebase === 'undefined') {
