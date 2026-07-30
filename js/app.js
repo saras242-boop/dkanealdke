@@ -1253,6 +1253,35 @@ function wireSettings() {
   });
 }
 
+function wireSupplierLoginUi() {
+  const loginLink = document.getElementById('supplierLoginLink');
+  const cancelBtn = document.getElementById('supplierLoginCancel');
+  const okBtn = document.getElementById('supplierLoginOk');
+
+  if (loginLink) {
+    loginLink.addEventListener('click', () => {
+      document.getElementById('supplierLoginUser').value = '';
+      document.getElementById('supplierLoginPass').value = '';
+      document.getElementById('supplierLoginError').textContent = '';
+
+      document
+        .getElementById('supplierLoginModal')
+        .classList.remove('hidden');
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      document
+        .getElementById('supplierLoginModal')
+        .classList.add('hidden');
+    });
+  }
+
+  if (okBtn) {
+    okBtn.addEventListener('click', attemptSupplierLogin);
+  }
+}
 
 async function attemptSupplierLogin() {
   const user = document.getElementById('supplierLoginUser').value.trim();
