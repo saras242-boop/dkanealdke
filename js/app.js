@@ -21,10 +21,18 @@
    عبر IndexedDB ولا يحتاج إنترنت.
    ========================================================= */
 const FIREBASE_CONFIG = {
-  databaseURL: 'https://respict-212a7-default-rtdb.firebaseio.com/',
+  apiKey: 'AIzaSyCc0B_xCY3cwilBbRZ3g6Kz65XEMmvo8Rk',
+  authDomain: 'respict-212a7.firebaseapp.com',
+  databaseURL: 'https://respict-212a7-default-rtdb.firebaseio.com',
+  projectId: 'respict-212a7',
+  storageBucket: 'respict-212a7.firebasestorage.app',
+  messagingSenderId: '531604352837',
+  appId: '1:531604352837:web:3a1bc13f75c9dbd329d82c',
+  measurementId: 'G-M5G726058Q'
 };
 let _firebaseApp = null;
 let _firebaseDb = null;
+let _firebaseAuth = null;
 function getFirebaseDb() {
   if (_firebaseDb) return _firebaseDb;
   if (typeof firebase === 'undefined') {
@@ -35,6 +43,46 @@ function getFirebaseDb() {
   }
   _firebaseDb = firebase.database();
   return _firebaseDb;
+}
+
+function getFirebaseAuth() {
+  if (_firebaseAuth) return _firebaseAuth;
+  if (typeof firebase === 'undefined') {
+    throw new Error('تعذر تحميل مكتبة Firebase. تحقق من اتصالك بالإنترنت.');
+  }
+  if (!_firebaseApp) {
+    _firebaseApp = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(FIREBASE_CONFIG);
+  }
+  if (!firebase.auth) {
+    throw new Error('تعذر تحميل Firebase Authentication. تأكد من إضافة firebase-auth-compat.js في index.html.');
+  }
+  _firebaseAuth = firebase.auth();
+  return _firebaseAuth;
+}
+
+function firebaseAuthMessage(err) {
+  const messages = {
+    'auth/invalid-email': 'البريد الإلكتروني غير صحيح.',
+    'auth/user-disabled': 'هذا الحساب موقوف.',
+    'auth/user-not-found': 'لا يوجد حساب بهذا البريد.',
+    'auth/wrong-password': 'كلمة المرور غير صحيحة.',
+    'auth/invalid-credential': 'بيانات الدخول غير صحيحة.',
+    'auth/too-many-requests': 'تمت محاولات كثيرة. انتظر قليلاً ثم حاول مرة أخرى.'
+  };
+  return messages[err && err.code] || (err && err.message) || 'تعذر تسجيل الدخول.';
+}
+
+function buildSupplierRecordFromUser(user, oldData = {}) {
+  return {
+    ...oldData,
+    uid: user.uid,
+    email: user.email || oldData.email || '',
+    supplierName: oldData.supplierName || oldData.name || user.displayName || user.email || 'مورّد',
+    name: oldData.name || oldData.supplierName || user.displayName || user.email || 'مورّد',
+    status: oldData.status || 'active',
+    updatedAt: new Date().toISOString(),
+    createdAt: oldData.createdAt || new Date().toISOString()
+  };
 }
 
 
@@ -1314,44 +1362,45 @@ function wireSupplierLoginUi() {
 }
 
 async function attemptSupplierLogin() {
-  const user = document.getElementById('supplierLoginUser').value.trim();
+  const email = document.getElementById('supplierLoginUser').value.trim();
   const pass = document.getElementById('supplierLoginPass').value;
   const errEl = document.getElementById('supplierLoginError');
   errEl.textContent = '';
-  if (!user || !pass) { errEl.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور'; return; }
+  if (!email || !pass) { errEl.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور'; return; }
 
   const okBtn = document.getElementById('supplierLoginOk');
   okBtn.disabled = true;
   okBtn.textContent = 'جارِ التحقق...';
   try {
+    const auth = getFirebaseAuth();
     const db = getFirebaseDb();
-    const snap = await withTimeout(db.ref('suppliers').once('value'));
-    const all = snap.val() || {};
-    let matchId = null, matchVal = null;
-    Object.entries(all).forEach(([key, val]) => {
-      if (matchId) return;
-      const uMatch = val.username === user || val.phone === user;
-      if (uMatch && val.password === pass) { matchId = key; matchVal = val; }
-    });
-    if (!matchId) { errEl.textContent = 'بيانات الدخول غير صحيحة'; return; }
-    if (matchVal.status === 'suspended' || matchVal.status === 'disabled') {
+    const cred = await withTimeout(auth.signInWithEmailAndPassword(email, pass));
+    const authUser = cred.user;
+    const supplierRef = db.ref('suppliers/' + authUser.uid);
+    const supplierSnap = await withTimeout(supplierRef.once('value'));
+    const supplierData = buildSupplierRecordFromUser(authUser, supplierSnap.val() || {});
+
+    if (supplierData.status === 'suspended' || supplierData.status === 'disabled') {
+      await auth.signOut().catch(() => {});
       errEl.textContent = 'تم إيقاف هذا الحساب. تواصل مع إدارة دكاني الذكي.';
       return;
     }
-    currentSupplierSession = { id: matchId, name: matchVal.supplierName || matchVal.name || 'مورّد' };
-    await dbAdd('settings', { key: 'supplierSession', id: matchId, name: currentSupplierSession.name });
+
+    await supplierRef.update(supplierData);
+    currentSupplierSession = { id: authUser.uid, name: supplierData.supplierName || supplierData.name || 'مورّد' };
+    await dbAdd('settings', { key: 'supplierSession', id: currentSupplierSession.id, name: currentSupplierSession.name });
     document.getElementById('supplierLoginModal').classList.add('hidden');
     showSupplierShell();
   } catch (err) {
     console.error(err);
-    errEl.textContent = 'تعذر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.';
+    errEl.textContent = err && err.code && String(err.code).startsWith('auth/')
+      ? firebaseAuthMessage(err)
+      : 'تعذر الاتصال بالخادم. تحقق من الإنترنت أو إعدادات Firebase وحاول مرة أخرى.';
   } finally {
     okBtn.disabled = false;
     okBtn.textContent = 'دخول';
   }
-}
-
-function showSupplierShell() {
+}function showSupplierShell() {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('supplierShell').classList.remove('hidden');
