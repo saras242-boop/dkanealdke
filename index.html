@@ -212,6 +212,17 @@
             <h3>طلب الشراء الحالي</h3>
             <div id="supplierCartTable" class="cart-table"></div>
             <div class="cart-total"><span>عدد الأصناف</span><strong id="supplierCartCount">0</strong></div>
+
+            <div class="contact-fields">
+              <label class="hint" for="supplierOrderPhone">رقم هاتفك (لتواصل المورّد معك)</label>
+              <input type="tel" id="supplierOrderPhone" placeholder="مثال: 059xxxxxxx" autocomplete="tel" required>
+              <label class="hint" for="supplierOrderLocation">موقعك (حي / معلم قريب أو موقع GPS)</label>
+              <div class="location-row">
+                <input type="text" id="supplierOrderLocation" placeholder="مثال: طولكرم - حي النزهة" autocomplete="off" required>
+                <button type="button" id="useLocationBtn" class="btn-ghost">📍 موقعي</button>
+              </div>
+            </div>
+
             <button id="sendSupplierOrderBtn" class="btn-primary full">📨 إرسال الطلب للمورد</button>
           </div>
         </div>
@@ -360,14 +371,15 @@
 
 <!-- ===== نافذة دخول المورد ===== -->
 <div id="supplierLoginModal" class="modal-overlay hidden">
-  <div class="modal-card">
-    <h3>دخول المورد</h3>
+  <div class="modal-card supplier-login-card">
+    <div class="modal-icon">🚚</div>
+    <h3>دخول المورّد</h3>
     <p class="hint">هذا الدخول مخصص للموردين المعتمدين فقط. بيانات الدخول تُعطى لك من إدارة دكاني الذكي.</p>
-    <label class="hint" style="display:block;margin-top:10px;">اسم المستخدم أو رقم الهاتف</label>
-    <input type="text" id="supplierLoginUser" placeholder="اسم المستخدم">
-    <label class="hint" style="display:block;margin-top:8px;">كلمة المرور</label>
-    <input type="password" id="supplierLoginPass" placeholder="كلمة المرور">
-    <p id="supplierLoginError" class="hint" style="color:var(--brick);"></p>
+    <label class="field-label" for="supplierLoginUser">البريد الإلكتروني</label>
+    <input type="email" id="supplierLoginUser" placeholder="example@email.com" autocomplete="email" inputmode="email">
+    <label class="field-label" for="supplierLoginPass">كلمة المرور</label>
+    <input type="password" id="supplierLoginPass" placeholder="••••••••" autocomplete="current-password">
+    <p id="supplierLoginError" class="hint error-text"></p>
     <div class="modal-actions">
       <button id="supplierLoginCancel" class="btn-ghost">إلغاء</button>
       <button id="supplierLoginOk" class="btn-primary">دخول</button>
@@ -409,6 +421,7 @@
       <button class="nav-btn active" data-sview="orders"><i class="ic ic-receipt"></i><span>الطلبات الجديدة</span></button>
       <button class="nav-btn" data-sview="products"><i class="ic ic-box"></i><span>منتجاتي</span></button>
       <button class="nav-btn" data-sview="stats"><i class="ic ic-chart"></i><span>الإحصائيات</span></button>
+      <button class="nav-btn" data-sview="profile"><i class="ic ic-gear"></i><span>الملف الشخصي</span></button>
     </nav>
     <div class="sidebar-foot">
       <button id="supplierLogoutBtn" type="button" class="supplier-login-link">🚪 تسجيل الخروج</button>
@@ -450,6 +463,20 @@
       <div class="panel">
         <h3>الأكثر طلبًا من منتجاتك</h3>
         <div id="supplierTopProducts" class="bar-list"></div>
+      </div>
+    </section>
+
+    <section id="sview-profile" class="view">
+      <div class="panel">
+        <h3>الملف الشخصي</h3>
+        <p class="hint">هذه المعلومات هي التي يشاهدها أصحاب المحلات عند تصفح الموردين، بما فيها رقم هاتفك.</p>
+        <form id="supplierProfileForm" class="grid-form">
+          <input type="text" id="profSupplierName" placeholder="اسم الشركة / المورد" required>
+          <input type="text" id="profCity" placeholder="المدينة">
+          <input type="tel" id="profPhone" placeholder="رقم الهاتف" required>
+          <input type="text" id="profCategories" placeholder="أنواع المنتجات (افصل بفاصلة)">
+          <button type="submit" class="btn-primary">حفظ الملف الشخصي</button>
+        </form>
       </div>
     </section>
   </main>
