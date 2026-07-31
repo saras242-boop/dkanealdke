@@ -188,6 +188,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .ic-users  { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.5'/%3E%3Cpath d='M2.5 20a6.5 6.5 0 0 1 13 0'/%3E%3Cpath d='M16 4.5a3.5 3.5 0 0 1 0 7'/%3E%3Cpath d='M15 13.5c2.9.4 5 2.5 5 6.5'/%3E%3C/svg%3E"); }
 .ic-gear   { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3.2'/%3E%3Cpath d='M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H2.5a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.15 9.5a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 6.58 4.74l.06.06a1.7 1.7 0 0 0 1.87.34H8.6A1.7 1.7 0 0 0 9.64 3.5V3.4a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56h.09a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09c.24.7.82 1.24 1.56 1.29h.1a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04Z'/%3E%3C/svg%3E"); }
 .ic-camera { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8a2 2 0 0 1 2-2h1.5l1-1.6h7l1 1.6H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E"); }
+.ic-truck  { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 8h11v9H2z'/%3E%3Cpath d='M13 11h4l4 3.5V17h-8z'/%3E%3Ccircle cx='6.5' cy='19' r='1.7'/%3E%3Ccircle cx='17' cy='19' r='1.7'/%3E%3C/svg%3E"); }
 .ic { -webkit-mask-image: var(--i); mask-image: var(--i); }
 
 /* ---------- هيكل التطبيق ---------- */
@@ -520,6 +521,81 @@ table.tbl tr:hover td { background: #FBF8EF; }
 .receipt-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
 .receipt-content td { padding: 5px 0; border-bottom: 1px dashed var(--sand-3); font-size: 0.85rem; }
 .receipt-content .r-total { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.1rem; color: var(--ink); border-top: 2px dashed var(--sand-3); padding-top: 10px; margin-top: 6px; }
+
+/* ---------- ميزة الموردين ---------- */
+.supplier-login-link {
+  display: block; width: 100%; text-align: right; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12); color: #D9D3B8; font-family: inherit;
+  font-size: 0.82rem; padding: 9px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 8px;
+}
+.supplier-login-link:hover { background: rgba(255,255,255,0.12); color: var(--white); }
+
+.supplier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 8px; }
+.supplier-card {
+  background: var(--sand); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; cursor: pointer; transition: border-color .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+.supplier-card:hover { border-color: var(--olive); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.supplier-card h4 { margin: 0 0 4px; color: var(--ink); font-family: var(--font-display); font-size: 1.1rem; }
+.supplier-card .s-meta { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 2px; }
+.supplier-card .s-tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+.supplier-card .s-tag { background: var(--olive-soft); color: var(--olive); font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+
+.supplier-products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 12px; max-height: 520px; overflow-y: auto; padding-inline-end: 4px; }
+.supplier-product-card {
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.supplier-product-card .sp-img {
+  width: 100%; height: 110px; background: var(--sand) center/cover no-repeat; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 1.6rem;
+}
+.supplier-product-card .sp-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.supplier-product-card .sp-name { font-weight: 700; color: var(--ink); font-size: 0.9rem; }
+.supplier-product-card .sp-desc { font-size: 0.76rem; color: var(--muted); min-height: 1.1em; }
+.supplier-product-card .sp-price { font-weight: 800; color: var(--olive); font-family: var(--font-display); font-size: 1.05rem; }
+.supplier-product-card button { margin-top: auto; }
+.supplier-product-card.unavailable { opacity: 0.55; }
+
+.badge.status-new { background: var(--gold-soft); color: #8a6a24; }
+.badge.status-seen { background: var(--olive-soft); color: var(--olive); }
+.badge.status-fulfilled { background: var(--ink); color: var(--white); }
+
+/* ---------- تحسينات نافذة دخول المورّد ---------- */
+/* حجم خط 16px يمنع تكبير الصفحة تلقائيًا عند الكتابة على آيفون */
+.modal-card input, .modal-card select { font-size: 1rem; }
+
+.supplier-login-card { text-align: center; max-width: 380px; }
+.modal-icon {
+  width: 56px; height: 56px; margin: 0 auto 12px;
+  background: var(--sand); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.supplier-login-card h3 { margin-bottom: 6px; }
+.supplier-login-card .hint { margin-bottom: 4px; }
+.field-label { display: block; text-align: right; font-size: 0.82rem; color: var(--muted); font-weight: 600; margin-top: 14px; margin-bottom: 2px; }
+.supplier-login-card input { text-align: left; direction: ltr; }
+.supplier-login-card input::placeholder { text-align: left; }
+.error-text { min-height: 18px; color: var(--brick); font-weight: 600; }
+.supplier-login-card .modal-actions { flex-direction: column-reverse; gap: 8px; }
+.supplier-login-card .modal-actions button { width: 100%; }
+
+@media (max-width: 480px) {
+  .modal-card { padding: 22px 18px 18px; }
+  .modal-icon { width: 48px; height: 48px; font-size: 1.4rem; }
+}
+
+/* ---------- حقول التواصل عند إرسال طلب لمورّد ---------- */
+.contact-fields { margin: 16px 0 4px; padding-top: 14px; border-top: 1px dashed var(--sand-3); display: flex; flex-direction: column; gap: 4px; }
+.contact-fields input { margin-bottom: 6px; }
+.location-row { display: flex; gap: 8px; }
+.location-row input { flex: 1; min-width: 0; }
+.location-row .btn-ghost { margin: 0; white-space: nowrap; padding: 11px 14px; }
+@media (max-width: 480px) {
+  .location-row { flex-direction: column; }
+  .location-row .btn-ghost { width: 100%; }
+}
 
 /* ---------- طباعة ---------- */
 @media print {
