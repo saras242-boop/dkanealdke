@@ -1469,7 +1469,6 @@ async function loadSupplierList() {
       .map(([id, v]) => ({ id, ...v }))
       .filter(s => (s.status || 'active') === 'active');
  
- <p>الهاتف: ${escapeHtml(s.phone || 'غير مضاف')}</p>    
      
     if (suppliers.length === 0) {
       listEl.innerHTML = '<div class="empty-state"><span class="emoji">🚚</span>لا يوجد موردون معتمدون حاليًا.</div>';
