@@ -1,24 +1,10 @@
 /* =========================================================
    دكاني الذكي — الملف الرئيسي المدمج (app.js)
-   يحتوي هذا الملف الواحد على:
-     1) إعداد الاتصال بـ Firebase (لميزة الموردين فقط)
-     2) منطق الواجهة الرئيسي للتطبيق (لوحة المعلومات، الكاشير،
-        المنتجات، المخزون، الفواتير، الديون، التقارير، الموظفون، الإعدادات)
-     3) منطق ميزة الموردين (تصفح الموردين من طرف صاحب المحل +
-        لوحة تحكم المورّد)
-
-   ملاحظة: بعد استخدام هذا الملف، احذف الإشارة إلى
-   js/firebase-config.js و js/suppliers.js من ملف index.html
-   وأبقِ فقط: js/db.js ثم js/barcode.js ثم js/app.js
    ========================================================= */
 
 
 /* =========================================================
    1) إعداد الاتصال بـ Firebase (لميزة الموردين فقط)
-   ملاحظة مهمة: هذه الميزة هي الجزء الوحيد في دكاني الذكي الذي
-   يعتمد على خادم خارجي (Firebase Realtime Database). كل بقية
-   النظام (الكاشير، المخزون، الفواتير...) يعمل محليًا بالكامل
-   عبر IndexedDB ولا يحتاج إنترنت.
    ========================================================= */
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCc0B_xCY3cwilBbRZ3g6Kz65XEMmvo8Rk',
@@ -147,14 +133,6 @@ async function init() {
   startClock();
 }
 
-/* ------------------------------------------------------------
-   أداة مساعدة كانت مفقودة: حساب عدد الأيام المتبقية حتى تاريخ
-   انتهاء الصلاحية. سبب الخطأ "daysUntil is not defined" هو أن
-   هذه الدالة كانت تُستخدَم في refreshDashboard و refreshInventoryTable
-   دون أن تكون معرّفة في أي مكان بالملفات السابقة.
-   ترجع: عدد صحيح (موجب = أيام متبقية، سالب = منتهي منذ كذا يوم،
-   صفر = ينتهي اليوم)، أو null إذا لم يكن هناك تاريخ صلاحية.
-   ------------------------------------------------------------ */
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const target = new Date(dateStr);
@@ -1280,15 +1258,11 @@ let _storeIdCache = null;
 let _mySupplierProductsCache = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // نربط كل جزء بشكل منفصل ومحمي: إذا فشل جزء واحد لأي سبب،
-  // يبقى باقي الأجزاء (زر الدخول، التبويبات...) يعمل بشكل طبيعي.
   safeRun(wireSupplierLoginUi);
   safeRun(wireSupplierTabs);
   safeRun(wireSupplierBrowseUi);
   safeRun(wireSupplierDashboardUi);
 
-  // ربط مباشر إضافي لزر "الموردين" في القائمة الجانبية (احتياطي مستقل
-  // عن أي كود آخر) لضمان عمل القسم حتى لو تغيّر أي شيء في مكان آخر.
   const suppliersNavBtn = document.querySelector('.nav-btn[data-view="suppliers"]');
   if (suppliersNavBtn) suppliersNavBtn.addEventListener('click', () => safeRun(refreshSuppliersView));
 
@@ -1305,8 +1279,6 @@ function safeRun(fn) {
   try { return fn(); } catch (err) { console.error('خطأ في ميزة الموردين:', err); }
 }
 
-/* استدعاء أي وعد (Promise) مع مهلة قصوى؛ إذا لم يستجب الخادم خلال المهلة
-   نعتبرها فشلاً بدل أن تبقى الشاشة عالقة على "جارِ التحميل" للأبد. */
 function withTimeout(promise, ms = 9000) {
   return Promise.race([
     promise,
@@ -1400,7 +1372,9 @@ async function attemptSupplierLogin() {
     okBtn.disabled = false;
     okBtn.textContent = 'دخول';
   }
-}function showSupplierShell() {
+}
+
+function showSupplierShell() {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('supplierShell').classList.remove('hidden');
@@ -1503,7 +1477,6 @@ async function openSupplierProducts(supplierId, supplierName) {
     _currentSupplierProductsList = Object.entries(all).map(([id, v]) => ({ id, ...v }));
     renderSupplierProducts(_currentSupplierProductsList);
 
-    // تسجيل أن هذا المحل شاهد منتجات هذا المورّد (لإحصائية "عدد المحلات التي شاهدت منتجاته")
     const storeId = await getStoreId();
     db.ref(`productViews/${supplierId}/${storeId}`).set(true).catch(() => {});
   } catch (err) {
