@@ -76,6 +76,7 @@ function buildSupplierRecordFromUser(user, oldData = {}) {
   return {
     ...oldData,
     uid: user.uid,
+     phone: oldData.phone || '',
     email: user.email || oldData.email || '',
     supplierName: oldData.supplierName || oldData.name || user.displayName || user.email || 'مورّد',
     name: oldData.name || oldData.supplierName || user.displayName || user.email || 'مورّد',
@@ -1379,6 +1380,12 @@ async function attemptSupplierLogin() {
     const supplierRef = db.ref('suppliers/' + authUser.uid);
     const supplierSnap = await withTimeout(supplierRef.once('value'));
     const supplierData = buildSupplierRecordFromUser(authUser, supplierSnap.val() || {});
+     if (!supplierData.phone) {
+  const supplierPhone = prompt('اكتب رقم هاتفك حتى يظهر لأصحاب المتاجر:') || '';
+  if (supplierPhone.trim()) {
+    supplierData.phone = supplierPhone.trim();
+  }
+}
 
     if (supplierData.status === 'suspended' || supplierData.status === 'disabled') {
       await auth.signOut().catch(() => {});
@@ -1461,7 +1468,9 @@ async function loadSupplierList() {
     const suppliers = Object.entries(all)
       .map(([id, v]) => ({ id, ...v }))
       .filter(s => (s.status || 'active') === 'active');
-
+ 
+ <p>الهاتف: ${escapeHtml(s.phone || 'غير مضاف')}</p>    
+     
     if (suppliers.length === 0) {
       listEl.innerHTML = '<div class="empty-state"><span class="emoji">🚚</span>لا يوجد موردون معتمدون حاليًا.</div>';
       return;
