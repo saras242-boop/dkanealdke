@@ -1583,6 +1583,34 @@ window.stepSupplierCartQty = stepSupplierCartQty;
 window.updateSupplierCartQty = updateSupplierCartQty;
 window.removeFromSupplierCart = removeFromSupplierCart;
 
+async function getStoreOrderContactInfo() {
+  const saved = await dbGet('settings', 'storeOrderContact') || {};
+
+  let phone = saved.phone || '';
+  let location = saved.location || '';
+
+  while (!phone.trim()) {
+    phone = prompt('اكتب رقم هاتف المتجر للتواصل معك في الطلبية:') || '';
+    if (!phone.trim()) alert('رقم الهاتف ضروري لإرسال الطلبية.');
+  }
+
+  while (!location.trim()) {
+    location = prompt('اكتب موقع المتجر أو العنوان بالتفصيل:') || '';
+    if (!location.trim()) alert('موقع المتجر ضروري لإرسال الطلبية.');
+  }
+
+  await dbAdd('settings', {
+    key: 'storeOrderContact',
+    phone: phone.trim(),
+    location: location.trim()
+  });
+
+  return {
+    storePhone: phone.trim(),
+    storeLocation: location.trim()
+  };
+}
+
 async function sendSupplierOrder() {
   if (supplierCart.length === 0) { showToast('اختر منتجات أولاً', 'error'); return; }
   const btn = document.getElementById('sendSupplierOrderBtn');
@@ -1630,8 +1658,10 @@ async function loadMyOrders() {
         <td>${fmtDate(o.createdAt)}</td>
         <td>${escapeHtml(o.supplierName)}</td>
         <td>${o.items.map(i => `${escapeHtml(i.name)} × ${i.quantity}`).join('، ')}</td>
-        <td><span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'قيد الانتظار'}</span></td>
-      </tr>`).join('')}
+<td>
+  <span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'قيد الانتظار'}</span>
+  ${o.status === 'fulfilled' ? '<div class="hint">تم تجهيز الطلب. تواصل مع المورد للاستلام.</div>' : ''}
+</td>      </tr>`).join('')}
     </tbody></table>`;
   } catch (err) {
     firebaseErrorToast(err);
@@ -1702,10 +1732,18 @@ async function loadSupplierOrdersInbox() {
 async function markOrderStatus(orderKey, status) {
   try {
     const db = getFirebaseDb();
-    await db.ref('orders/' + orderKey + '/status').set(status);
-    showToast('تم تحديث حالة الطلب', 'success', 1600);
+
+    await db.ref('orders/' + orderKey).update({
+      status,
+      updatedAt: new Date().toISOString(),
+      supplierMessage: status === 'fulfilled' ? 'تم تجهيز الطلب، يمكنك استلامه أو التواصل مع المورد.' : ''
+    });
+
+    showToast(status === 'fulfilled' ? 'تم تجهيز الطلب وإبلاغ المتجر' : 'تم تحديث حالة الطلب', 'success', 1800);
     loadSupplierOrdersInbox();
-  } catch (err) { firebaseErrorToast(err); }
+  } catch (err) {
+    firebaseErrorToast(err);
+  }
 }
 window.markOrderStatus = markOrderStatus;
 
