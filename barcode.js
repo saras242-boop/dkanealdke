@@ -48,6 +48,17 @@ class BarcodeScanner {
         const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
         return { width: size, height: size };
       },
+      aspectRatio: 1.7777778,
+      // بدون هذا، بعض المتصفحات/الأجهزة تفتح الكاميرا بدقة منخفضة جدًا
+      // (أحيانًا 640×480) فيطلع الفيديو مغبّشًا وصعب قراءة الباركود منه.
+      // هون بنطلب أعلى دقة ممكنة صراحةً.
+      videoConstraints: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920, min: 1280 },
+        height: { ideal: 1080, min: 720 },
+      },
+      // يستخدم كاشف الباركود المدمج بالمتصفح إذا كان مدعومًا (أدق وأسرع من التحليل اليدوي)
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     };
 
     const onDecode = (decodedText) => this.handleDecode(decodedText);
@@ -71,8 +82,25 @@ class BarcodeScanner {
       }
     }
 
+    this._improveFocus();
     this.isRunning = true;
     document.addEventListener('visibilitychange', this._visibilityHandler);
+  }
+
+  /* محاولة إجبار التركيز البؤري المستمر (autofocus) على الكاميرا الخلفية
+     إن كان الجهاز يدعم ذلك — يحسّن وضوح الباركود القريب بشكل ملحوظ.
+     لا يفعل شيئًا إن لم يكن مدعومًا، بدون أي خطأ ظاهر للمستخدم. */
+  _improveFocus() {
+    try {
+      const videoEl = document.querySelector(`#${this.elementId} video`);
+      const stream = videoEl && videoEl.srcObject;
+      const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (!track || !track.getCapabilities) return;
+      const caps = track.getCapabilities();
+      const advanced = [];
+      if (caps.focusMode && caps.focusMode.includes('continuous')) advanced.push({ focusMode: 'continuous' });
+      if (advanced.length) track.applyConstraints({ advanced }).catch(() => {});
+    } catch (e) { /* بعض المتصفحات لا تدعم ضبط التركيز يدويًا، لا مشكلة */ }
   }
 
   async stop() {
