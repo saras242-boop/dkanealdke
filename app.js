@@ -1,24 +1,10 @@
 /* =========================================================
    دكاني الذكي — الملف الرئيسي المدمج (app.js)
-   يحتوي هذا الملف الواحد على:
-     1) إعداد الاتصال بـ Firebase (لميزة الموردين فقط)
-     2) منطق الواجهة الرئيسي للتطبيق (لوحة المعلومات، الكاشير،
-        المنتجات، المخزون، الفواتير، الديون، التقارير، الموظفون، الإعدادات)
-     3) منطق ميزة الموردين (تصفح الموردين من طرف صاحب المحل +
-        لوحة تحكم المورّد)
-
-   ملاحظة: بعد استخدام هذا الملف، احذف الإشارة إلى
-   js/firebase-config.js و js/suppliers.js من ملف index.html
-   وأبقِ فقط: js/db.js ثم js/barcode.js ثم js/app.js
    ========================================================= */
 
 
 /* =========================================================
    1) إعداد الاتصال بـ Firebase (لميزة الموردين فقط)
-   ملاحظة مهمة: هذه الميزة هي الجزء الوحيد في دكاني الذكي الذي
-   يعتمد على خادم خارجي (Firebase Realtime Database). كل بقية
-   النظام (الكاشير، المخزون، الفواتير...) يعمل محليًا بالكامل
-   عبر IndexedDB ولا يحتاج إنترنت.
    ========================================================= */
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCc0B_xCY3cwilBbRZ3g6Kz65XEMmvo8Rk',
@@ -76,7 +62,6 @@ function buildSupplierRecordFromUser(user, oldData = {}) {
   return {
     ...oldData,
     uid: user.uid,
-     phone: oldData.phone || '',
     email: user.email || oldData.email || '',
     supplierName: oldData.supplierName || oldData.name || user.displayName || user.email || 'مورّد',
     name: oldData.name || oldData.supplierName || user.displayName || user.email || 'مورّد',
@@ -148,14 +133,6 @@ async function init() {
   startClock();
 }
 
-/* ------------------------------------------------------------
-   أداة مساعدة كانت مفقودة: حساب عدد الأيام المتبقية حتى تاريخ
-   انتهاء الصلاحية. سبب الخطأ "daysUntil is not defined" هو أن
-   هذه الدالة كانت تُستخدَم في refreshDashboard و refreshInventoryTable
-   دون أن تكون معرّفة في أي مكان بالملفات السابقة.
-   ترجع: عدد صحيح (موجب = أيام متبقية، سالب = منتهي منذ كذا يوم،
-   صفر = ينتهي اليوم)، أو null إذا لم يكن هناك تاريخ صلاحية.
-   ------------------------------------------------------------ */
 function daysUntil(dateStr) {
   if (!dateStr) return null;
   const target = new Date(dateStr);
@@ -1281,15 +1258,12 @@ let _storeIdCache = null;
 let _mySupplierProductsCache = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // نربط كل جزء بشكل منفصل ومحمي: إذا فشل جزء واحد لأي سبب،
-  // يبقى باقي الأجزاء (زر الدخول، التبويبات...) يعمل بشكل طبيعي.
   safeRun(wireSupplierLoginUi);
   safeRun(wireSupplierTabs);
   safeRun(wireSupplierBrowseUi);
   safeRun(wireSupplierDashboardUi);
+  safeRun(wireSupplierProfileUi);
 
-  // ربط مباشر إضافي لزر "الموردين" في القائمة الجانبية (احتياطي مستقل
-  // عن أي كود آخر) لضمان عمل القسم حتى لو تغيّر أي شيء في مكان آخر.
   const suppliersNavBtn = document.querySelector('.nav-btn[data-view="suppliers"]');
   if (suppliersNavBtn) suppliersNavBtn.addEventListener('click', () => safeRun(refreshSuppliersView));
 
@@ -1306,8 +1280,6 @@ function safeRun(fn) {
   try { return fn(); } catch (err) { console.error('خطأ في ميزة الموردين:', err); }
 }
 
-/* استدعاء أي وعد (Promise) مع مهلة قصوى؛ إذا لم يستجب الخادم خلال المهلة
-   نعتبرها فشلاً بدل أن تبقى الشاشة عالقة على "جارِ التحميل" للأبد. */
 function withTimeout(promise, ms = 9000) {
   return Promise.race([
     promise,
@@ -1326,6 +1298,16 @@ async function getStoreId() {
   return _storeIdCache;
 }
 
+/* رقم هاتف وموقع صاحب المحل — يُحفظان محليًا بعد أول طلبية،
+   ويُعبّآن تلقائيًا في كل مرة، مع إمكانية تعديلهما دائمًا. */
+async function getSavedStoreContact() {
+  const row = await dbGet('settings', 'storeContact');
+  return { phone: (row && row.phone) || '', location: (row && row.location) || '' };
+}
+async function saveStoreContact(phone, location) {
+  await dbAdd('settings', { key: 'storeContact', phone, location });
+}
+
 function firebaseErrorToast(err) {
   console.error(err);
   const isTimeout = err && /مهلة/.test(err.message || '');
@@ -1336,6 +1318,28 @@ function firebaseErrorToast(err) {
     'error', 4500
   );
 }
+
+/* تنبيهات المتصفح: تعمل فقط طالما الصفحة/التبويب مفتوح (حتى لو
+   بالخلفية) — وليس تنبيهًا حقيقيًا بعد إغلاق التطبيق بالكامل،
+   لأن ذلك يحتاج خادم إشعارات (FCM) وهو خارج نطاق هذا التطبيق. */
+function ensureNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
+}
+function notifyBrowser(title, body) {
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: undefined });
+    }
+  } catch (e) { /* بعض المتصفحات تمنع الإشعارات، لا مشكلة */ }
+}
+
+let _myOrdersRef = null;
+let _myOrdersPrevStatus = {}; // orderKey -> status, لاكتشاف تحوّل الطلب إلى "تم التجهيز"
+let _supplierOrdersRef = null;
+let _supplierOrdersPrevKeys = null; // Set من مفاتيح الطلبات، لاكتشاف وصول طلب جديد
 
 /* ============================================================
    دخول المورد
@@ -1380,12 +1384,6 @@ async function attemptSupplierLogin() {
     const supplierRef = db.ref('suppliers/' + authUser.uid);
     const supplierSnap = await withTimeout(supplierRef.once('value'));
     const supplierData = buildSupplierRecordFromUser(authUser, supplierSnap.val() || {});
-     if (!supplierData.phone) {
-  const supplierPhone = prompt('اكتب رقم هاتفك حتى يظهر لأصحاب المتاجر:') || '';
-  if (supplierPhone.trim()) {
-    supplierData.phone = supplierPhone.trim();
-  }
-}
 
     if (supplierData.status === 'suspended' || supplierData.status === 'disabled') {
       await auth.signOut().catch(() => {});
@@ -1407,7 +1405,9 @@ async function attemptSupplierLogin() {
     okBtn.disabled = false;
     okBtn.textContent = 'دخول';
   }
-}function showSupplierShell() {
+}
+
+function showSupplierShell() {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('supplierShell').classList.remove('hidden');
@@ -1428,11 +1428,13 @@ function wireSupplierTabs() {
     const tab = btn.dataset.stab;
     document.getElementById('supplierBrowsePane').classList.toggle('hidden', tab !== 'browse');
     document.getElementById('supplierOrdersPane').classList.toggle('hidden', tab !== 'orders');
-    if (tab === 'orders') loadMyOrders();
+    if (tab === 'orders') startMyOrdersListener();
+    else stopMyOrdersListener();
   });
 }
 
 function refreshSuppliersView() {
+  stopMyOrdersListener();
   document.querySelectorAll('#supplierTabs .tab').forEach(t => t.classList.toggle('active', t.dataset.stab === 'browse'));
   document.getElementById('supplierBrowsePane').classList.remove('hidden');
   document.getElementById('supplierOrdersPane').classList.add('hidden');
@@ -1456,6 +1458,29 @@ function wireSupplierBrowseUi() {
     renderSupplierProducts(_currentSupplierProductsList, e.target.value);
   });
   document.getElementById('sendSupplierOrderBtn').addEventListener('click', sendSupplierOrder);
+  document.getElementById('useLocationBtn').addEventListener('click', useCurrentLocationForOrder);
+}
+
+function useCurrentLocationForOrder() {
+  if (!navigator.geolocation) { showToast('المتصفح لا يدعم تحديد الموقع تلقائيًا، اكتب موقعك يدويًا', 'error'); return; }
+  const btn = document.getElementById('useLocationBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ جارِ التحديد...';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      document.getElementById('supplierOrderLocation').value = `https://maps.google.com/?q=${latitude},${longitude}`;
+      showToast('تم تحديد موقعك ✅', 'success', 1600);
+      btn.disabled = false;
+      btn.textContent = '📍 موقعي';
+    },
+    () => {
+      showToast('تعذر تحديد الموقع. تأكد من تفعيل صلاحية الموقع في المتصفح', 'error');
+      btn.disabled = false;
+      btn.textContent = '📍 موقعي';
+    },
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
 }
 
 async function loadSupplierList() {
@@ -1468,8 +1493,7 @@ async function loadSupplierList() {
     const suppliers = Object.entries(all)
       .map(([id, v]) => ({ id, ...v }))
       .filter(s => (s.status || 'active') === 'active');
- 
-     
+
     if (suppliers.length === 0) {
       listEl.innerHTML = '<div class="empty-state"><span class="emoji">🚚</span>لا يوجد موردون معتمدون حاليًا.</div>';
       return;
@@ -1504,6 +1528,10 @@ async function openSupplierProducts(supplierId, supplierName) {
   const gridEl = document.getElementById('supplierProductsGrid');
   gridEl.innerHTML = '<p class="hint">جارِ تحميل المنتجات...</p>';
 
+  const contact = await getSavedStoreContact();
+  document.getElementById('supplierOrderPhone').value = contact.phone;
+  document.getElementById('supplierOrderLocation').value = contact.location;
+
   try {
     const db = getFirebaseDb();
     const snap = await withTimeout(db.ref('supplierProducts/' + supplierId).once('value'));
@@ -1511,7 +1539,6 @@ async function openSupplierProducts(supplierId, supplierName) {
     _currentSupplierProductsList = Object.entries(all).map(([id, v]) => ({ id, ...v }));
     renderSupplierProducts(_currentSupplierProductsList);
 
-    // تسجيل أن هذا المحل شاهد منتجات هذا المورّد (لإحصائية "عدد المحلات التي شاهدت منتجاته")
     const storeId = await getStoreId();
     db.ref(`productViews/${supplierId}/${storeId}`).set(true).catch(() => {});
   } catch (err) {
@@ -1591,36 +1618,13 @@ window.stepSupplierCartQty = stepSupplierCartQty;
 window.updateSupplierCartQty = updateSupplierCartQty;
 window.removeFromSupplierCart = removeFromSupplierCart;
 
-async function getStoreOrderContactInfo() {
-  const saved = await dbGet('settings', 'storeOrderContact') || {};
-
-  let phone = saved.phone || '';
-  let location = saved.location || '';
-
-  while (!phone.trim()) {
-    phone = prompt('اكتب رقم هاتف المتجر للتواصل معك في الطلبية:') || '';
-    if (!phone.trim()) alert('رقم الهاتف ضروري لإرسال الطلبية.');
-  }
-
-  while (!location.trim()) {
-    location = prompt('اكتب موقع المتجر أو العنوان بالتفصيل:') || '';
-    if (!location.trim()) alert('موقع المتجر ضروري لإرسال الطلبية.');
-  }
-
-  await dbAdd('settings', {
-    key: 'storeOrderContact',
-    phone: phone.trim(),
-    location: location.trim()
-  });
-
-  return {
-    storePhone: phone.trim(),
-    storeLocation: location.trim()
-  };
-}
-
 async function sendSupplierOrder() {
   if (supplierCart.length === 0) { showToast('اختر منتجات أولاً', 'error'); return; }
+  const phone = document.getElementById('supplierOrderPhone').value.trim();
+  const location = document.getElementById('supplierOrderLocation').value.trim();
+  if (!phone) { showToast('يرجى إدخال رقم هاتفك حتى يتواصل معك المورّد', 'error'); return; }
+  if (!location) { showToast('يرجى إدخال موقعك', 'error'); return; }
+
   const btn = document.getElementById('sendSupplierOrderBtn');
   btn.disabled = true;
   btn.textContent = 'جارِ الإرسال...';
@@ -1628,9 +1632,12 @@ async function sendSupplierOrder() {
     const db = getFirebaseDb();
     const storeId = await getStoreId();
     const storeSettings = await dbGet('settings', 'store');
+    await saveStoreContact(phone, location);
     const order = {
       storeId,
       storeName: (storeSettings && storeSettings.storeName) || 'متجر',
+      storePhone: phone,
+      storeLocation: location,
       supplierId: selectedSupplierId,
       supplierName: selectedSupplierName,
       items: supplierCart.map(c => ({ productId: c.productId, name: c.name, price: c.price, quantity: c.qty })),
@@ -1649,15 +1656,47 @@ async function sendSupplierOrder() {
   }
 }
 
-async function loadMyOrders() {
+function stopMyOrdersListener() {
+  if (_myOrdersRef) { _myOrdersRef.off('value'); _myOrdersRef = null; }
+}
+
+async function startMyOrdersListener() {
+  stopMyOrdersListener();
+  ensureNotificationPermission();
   const el = document.getElementById('myOrdersTable');
   el.innerHTML = '<p class="hint">جارِ التحميل...</p>';
+  let db, storeId;
   try {
-    const db = getFirebaseDb();
-    const storeId = await getStoreId();
-    const snap = await withTimeout(db.ref('orders').orderByChild('storeId').equalTo(storeId).once('value'));
+    db = getFirebaseDb();
+    storeId = await getStoreId();
+  } catch (err) {
+    firebaseErrorToast(err);
+    el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل طلباتك.</div>';
+    return;
+  }
+
+  const ref = db.ref('orders').orderByChild('storeId').equalTo(storeId);
+  _myOrdersRef = ref;
+  const timeoutId = setTimeout(() => {
+    if (_myOrdersRef === ref) {
+      el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>انتهت مهلة الاتصال. تحقق من الإنترنت.</div>';
+    }
+  }, 9000);
+
+  ref.on('value', (snap) => {
+    clearTimeout(timeoutId);
     const all = snap.val() || {};
-    const orders = Object.values(all).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const orders = Object.entries(all).map(([key, v]) => ({ key, ...v })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    orders.forEach(o => {
+      const prev = _myOrdersPrevStatus[o.key];
+      if (prev && prev !== 'fulfilled' && o.status === 'fulfilled') {
+        showToast(`🎉 طلبك من "${o.supplierName}" أصبح جاهزًا!`, 'success', 6000);
+        notifyBrowser('طلبك جاهز ✅', `المورّد "${o.supplierName}" جهّز طلبك.`);
+      }
+      _myOrdersPrevStatus[o.key] = o.status;
+    });
+
     document.getElementById('myOrdersCount').textContent = `${orders.length} طلب`;
     if (orders.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">📨</span>لم ترسل أي طلبات بعد.</div>'; return; }
     const statusLabel = { new: 'قيد الانتظار', seen: 'تمت المشاهدة', fulfilled: 'تم التجهيز' };
@@ -1666,15 +1705,14 @@ async function loadMyOrders() {
         <td>${fmtDate(o.createdAt)}</td>
         <td>${escapeHtml(o.supplierName)}</td>
         <td>${o.items.map(i => `${escapeHtml(i.name)} × ${i.quantity}`).join('، ')}</td>
-<td>
-  <span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'قيد الانتظار'}</span>
-  ${o.status === 'fulfilled' ? '<div class="hint">تم تجهيز الطلب. تواصل مع المورد للاستلام.</div>' : ''}
-</td>      </tr>`).join('')}
+        <td><span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'قيد الانتظار'}</span></td>
+      </tr>`).join('')}
     </tbody></table>`;
-  } catch (err) {
+  }, (err) => {
+    clearTimeout(timeoutId);
     firebaseErrorToast(err);
     el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل طلباتك.</div>';
-  }
+  });
 }
 
 /* ============================================================
@@ -1703,55 +1741,91 @@ function wireSupplierDashboardUi() {
 function switchSupplierView(view) {
   document.querySelectorAll('#supplierNav .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.sview === view));
   document.querySelectorAll('#supplierShell .view').forEach(v => v.classList.toggle('active', v.id === 'sview-' + view));
-  if (view === 'orders') loadSupplierOrdersInbox();
+  if (view === 'orders') startSupplierOrdersListener(); else stopSupplierOrdersListener();
   if (view === 'products') loadMySupplierProducts();
   if (view === 'stats') loadSupplierStats();
+  if (view === 'profile') loadSupplierProfile();
 }
 
-async function loadSupplierOrdersInbox() {
+function stopSupplierOrdersListener() {
+  if (_supplierOrdersRef) { _supplierOrdersRef.off('value'); _supplierOrdersRef = null; }
+}
+
+async function startSupplierOrdersListener() {
+  stopSupplierOrdersListener();
+  ensureNotificationPermission();
   const el = document.getElementById('supplierOrdersTable');
   el.innerHTML = '<p class="hint">جارِ التحميل...</p>';
-  try {
-    const db = getFirebaseDb();
-    const snap = await withTimeout(db.ref('orders').orderByChild('supplierId').equalTo(currentSupplierSession.id).once('value'));
+  let db;
+  try { db = getFirebaseDb(); } catch (err) {
+    firebaseErrorToast(err);
+    el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل الطلبات.</div>';
+    return;
+  }
+
+  const ref = db.ref('orders').orderByChild('supplierId').equalTo(currentSupplierSession.id);
+  _supplierOrdersRef = ref;
+  const timeoutId = setTimeout(() => {
+    if (_supplierOrdersRef === ref) {
+      el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>انتهت مهلة الاتصال. تحقق من الإنترنت.</div>';
+    }
+  }, 9000);
+
+  ref.on('value', (snap) => {
+    clearTimeout(timeoutId);
     const all = snap.val() || {};
     const orders = Object.entries(all).map(([key, v]) => ({ key, ...v })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (_supplierOrdersPrevKeys) {
+      orders.forEach(o => {
+        if (!_supplierOrdersPrevKeys.has(o.key)) {
+          showToast(`📥 طلب جديد من "${o.storeName}"`, 'info', 6000);
+          notifyBrowser('طلب جديد 📥', `"${o.storeName}" أرسل طلب شراء جديد.`);
+        }
+      });
+    }
+    _supplierOrdersPrevKeys = new Set(orders.map(o => o.key));
+
     document.getElementById('supplierOrdersCount').textContent = `${orders.length} طلب`;
     if (orders.length === 0) { el.innerHTML = '<div class="empty-state"><span class="emoji">📭</span>لا توجد طلبات واردة بعد.</div>'; return; }
     const statusLabel = { new: 'جديد', seen: 'تمت المشاهدة', fulfilled: 'تم التجهيز' };
-    el.innerHTML = `<table class="tbl"><thead><tr><th>التاريخ</th><th>المحل</th><th>المنتجات</th><th>الحالة</th><th></th></tr></thead><tbody>
+    el.innerHTML = `<table class="tbl"><thead><tr><th>التاريخ</th><th>المحل</th><th>التواصل</th><th>المنتجات</th><th>الحالة</th><th></th></tr></thead><tbody>
       ${orders.map(o => `<tr>
         <td>${fmtDate(o.createdAt)}</td>
         <td>${escapeHtml(o.storeName)}</td>
+        <td>${renderOrderContact(o)}</td>
         <td>${o.items.map(i => `${escapeHtml(i.name)} × ${i.quantity}`).join('، ')}</td>
         <td><span class="badge status-${o.status || 'new'}">${statusLabel[o.status] || 'جديد'}</span></td>
         <td>
           ${o.status !== 'seen' && o.status !== 'fulfilled' ? `<button class="link-btn" onclick="markOrderStatus('${o.key}','seen')">تمت المشاهدة</button>` : ''}
-          ${o.status !== 'fulfilled' ? `<button class="link-btn" onclick="markOrderStatus('${o.key}','fulfilled')">تم التجهيز</button>` : ''}
+          ${o.status !== 'fulfilled' ? `<button class="link-btn" onclick="markOrderStatus('${o.key}','fulfilled')">✅ تم التجهيز</button>` : ''}
         </td>
       </tr>`).join('')}
     </tbody></table>`;
-  } catch (err) {
+  }, (err) => {
+    clearTimeout(timeoutId);
     firebaseErrorToast(err);
     el.innerHTML = '<div class="empty-state"><span class="emoji">⚠️</span>تعذر تحميل الطلبات.</div>';
+  });
+}
+
+function renderOrderContact(o) {
+  const parts = [];
+  if (o.storePhone) parts.push(`<a href="tel:${escapeHtml(o.storePhone)}" class="link-btn">📞 ${escapeHtml(o.storePhone)}</a>`);
+  if (o.storeLocation) {
+    parts.push(/^https?:\/\//.test(o.storeLocation)
+      ? `<a href="${escapeHtml(o.storeLocation)}" target="_blank" rel="noopener" class="link-btn">📍 الموقع على الخريطة</a>`
+      : `<span class="hint">📍 ${escapeHtml(o.storeLocation)}</span>`);
   }
+  return parts.length ? parts.join('<br>') : '<span class="hint">-</span>';
 }
 
 async function markOrderStatus(orderKey, status) {
   try {
     const db = getFirebaseDb();
-
-    await db.ref('orders/' + orderKey).update({
-      status,
-      updatedAt: new Date().toISOString(),
-      supplierMessage: status === 'fulfilled' ? 'تم تجهيز الطلب، يمكنك استلامه أو التواصل مع المورد.' : ''
-    });
-
-    showToast(status === 'fulfilled' ? 'تم تجهيز الطلب وإبلاغ المتجر' : 'تم تحديث حالة الطلب', 'success', 1800);
-    loadSupplierOrdersInbox();
-  } catch (err) {
-    firebaseErrorToast(err);
-  }
+    await db.ref('orders/' + orderKey + '/status').set(status);
+    showToast(status === 'fulfilled' ? 'تم تجهيز الطلب ✅ — سيصل إشعار للمحل تلقائيًا' : 'تم تحديث حالة الطلب', 'success', 2200);
+  } catch (err) { firebaseErrorToast(err); }
 }
 window.markOrderStatus = markOrderStatus;
 
@@ -1890,5 +1964,52 @@ async function loadSupplierStats() {
   } catch (err) {
     firebaseErrorToast(err);
     grid.innerHTML = '';
+  }
+}
+
+/* ============================================================
+   الملف الشخصي للمورّد (اسم الشركة، المدينة، رقم الهاتف، الفئات)
+   ============================================================ */
+function wireSupplierProfileUi() {
+  document.getElementById('supplierProfileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const supplierName = document.getElementById('profSupplierName').value.trim();
+    const city = document.getElementById('profCity').value.trim();
+    const phone = document.getElementById('profPhone').value.trim();
+    const categories = document.getElementById('profCategories').value.trim();
+    if (!supplierName || !phone) { showToast('يرجى تعبئة الاسم ورقم الهاتف على الأقل', 'error'); return; }
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try {
+      const db = getFirebaseDb();
+      await db.ref('suppliers/' + currentSupplierSession.id).update({
+        supplierName, name: supplierName, city, phone, categories,
+        updatedAt: new Date().toISOString(),
+      });
+      currentSupplierSession.name = supplierName;
+      document.getElementById('supplierNameLabel').textContent = supplierName;
+      document.getElementById('supplierUserChip').textContent = `مرحبًا، ${supplierName}`;
+      await dbAdd('settings', { key: 'supplierSession', id: currentSupplierSession.id, name: supplierName });
+      showToast('تم حفظ ملفك الشخصي بنجاح ✅ — أصحاب المحلات سيرون رقم هاتفك الآن', 'success');
+    } catch (err) {
+      firebaseErrorToast(err);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+async function loadSupplierProfile() {
+  try {
+    const db = getFirebaseDb();
+    const snap = await withTimeout(db.ref('suppliers/' + currentSupplierSession.id).once('value'));
+    const data = snap.val() || {};
+    document.getElementById('profSupplierName').value = data.supplierName || data.name || '';
+    document.getElementById('profCity').value = data.city || '';
+    document.getElementById('profPhone').value = data.phone || '';
+    document.getElementById('profCategories').value = data.categories || '';
+  } catch (err) {
+    firebaseErrorToast(err);
   }
 }
