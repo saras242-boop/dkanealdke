@@ -197,6 +197,11 @@
 
       <div class="cashier-grid">
         <div class="panel cashier-left">
+          <div class="quick-add-row">
+            <input type="text" id="customOrderProductName" placeholder="منتج مش موجود بالنظام؟ اكتب اسمه هون...">
+            <input type="number" id="customOrderProductQty" placeholder="الكمية" min="1" value="1">
+            <button type="button" id="addCustomOrderProductBtn" class="btn-ghost">+ أضف للطلبية</button>
+          </div>
           <div id="orderProductsList" class="data-table"></div>
         </div>
         <div class="panel cashier-right">
