@@ -232,18 +232,11 @@ async function attemptStoreLogin(e) {
     const user = cred.user;
     const storeRef = db.ref('stores/' + user.uid);
     const snap = await withTimeout(storeRef.once('value'));
-    const oldData = snap.val();
+    const oldData = snap.val() || {};
 
-    // هذا هو الفصل الحقيقي بين "صاحب محل" و"مورّد": الحساب لا يصير
-    // صاحب محل إلا إذا أنت (الإدارة) أنشأت له سجلاً يدويًا تحت
-    // stores/{uid} بلوحة Firebase. بدون هذا السجل، الدخول يُرفض حتى
-    // لو البريد وكلمة المرور صحيحين — لأنه يعني الحساب هذا مخصص لدور آخر (مورّد مثلاً) أو غير مفعّل أصلاً.
-    if (!oldData) {
-      await auth.signOut().catch(() => {});
-      errEl.textContent = 'هذا الحساب غير مسجّل كصاحب محل. تواصل مع إدارة دكاني الذكي.';
-      return;
-    }
-
+    // ما عاد في دور تاني (مورّد) يلزم نفصله عنه، فأي حساب ينجح تسجيل
+    // دخوله (بريد وكلمة مرور صحيحين من Firebase) يُعتبر تلقائيًا
+    // حساب صاحب محل، ولو أول مرة يدخل فيها يُنشأ له سجل محل جديد هنا مباشرة.
     const storeData = {
       ...oldData,
       uid: user.uid,
