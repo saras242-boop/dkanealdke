@@ -1278,6 +1278,36 @@ function wireSupplierOrderFeature() {
     if (e.target.id === 'merchantPhoneModal') document.getElementById('merchantPhoneCancel').click();
   });
   document.getElementById('merchantPhoneOk').addEventListener('click', sendWhatsappOrder);
+
+  document.getElementById('addCustomOrderProductBtn').addEventListener('click', addCustomOrderProduct);
+  document.getElementById('customOrderProductName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomOrderProduct(); }
+  });
+  document.getElementById('customOrderProductQty').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomOrderProduct(); }
+  });
+}
+
+function addCustomOrderProduct() {
+  const nameInput = document.getElementById('customOrderProductName');
+  const qtyInput = document.getElementById('customOrderProductQty');
+  const name = nameInput.value.trim();
+  const qty = parseInt(qtyInput.value, 10) || 1;
+  if (!name) { showToast('اكتب اسم المنتج أولاً', 'error'); return; }
+  if (qty <= 0) { showToast('الكمية يجب أن تكون أكبر من صفر', 'error'); return; }
+
+  // لو فيه منتج غير مسجّل بنفس الاسم موجود بالطلبية أصلاً، نزيد الكمية بدل ما نكرره
+  const existing = supplierOrderCart.find(c => c.custom && c.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
+    existing.qty += qty;
+  } else {
+    supplierOrderCart.push({ productId: 'custom-' + uid(), name, unit: 'قطعة', qty, custom: true });
+  }
+  nameInput.value = '';
+  qtyInput.value = 1;
+  renderSupplierOrderCart();
+  showToast(`تمت إضافة "${name}" للطلبية`, 'success', 1500);
+  nameInput.focus();
 }
 
 async function refreshSupplierOrderView() {
@@ -1351,7 +1381,7 @@ function renderSupplierOrderCart() {
   } else {
     el.innerHTML = supplierOrderCart.map(c => `
       <div class="order-cart-row">
-        <span class="c-name">${escapeHtml(c.name)}<span class="c-sub">${c.qty} ${escapeHtml(c.unit)}</span></span>
+        <span class="c-name">${escapeHtml(c.name)} ${c.custom ? '<span class="badge warn">جديد</span>' : ''}<span class="c-sub">${c.qty} ${escapeHtml(c.unit)}</span></span>
         <button class="remove-btn" onclick="removeOrderItem('${c.productId}')">✕</button>
       </div>`).join('');
   }
@@ -1380,7 +1410,7 @@ async function sendWhatsappOrder() {
   await dbAdd('settings', { key: 'lastMerchantPhone', phone: raw });
 
   const store = await dbGet('settings', 'store');
-  const lines = supplierOrderCart.map(c => `• ${c.name} × ${c.qty} ${c.unit}`).join('\n');
+  const lines = supplierOrderCart.map(c => `• ${c.name}${c.custom ? ' (منتج جديد)' : ''} × ${c.qty} ${c.unit}`).join('\n');
   const message =
 `طلبية بضاعة من: ${store ? store.storeName : 'المتجر'}
 التاريخ: ${new Date().toLocaleDateString('ar-EG')}
