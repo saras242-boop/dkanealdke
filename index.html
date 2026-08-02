@@ -31,18 +31,18 @@
       <svg viewBox="0 0 280 20" preserveAspectRatio="none"><rect width="280" height="20" fill="url(#tatreezPattern)" class="tatreez-fill"/></svg>
     </div>
     <h1 class="brand">دكاني <span>الذكي</span></h1>
-    <p class="brand-sub">نظام إدارة ومبيعات السوبرماركت — سريع، ذكي، وبلا اتصال</p>
-    <form id="loginForm">
-      <label for="storeNameInput">اسم المتجر</label>
-      <input type="text" id="storeNameInput" placeholder="مثال: سوبرماركت الأمل" required autocomplete="off">
-      <label for="userNameInput">اسم المستخدم</label>
-      <input type="text" id="userNameInput" placeholder="اسمك" required autocomplete="off">
+    <p class="brand-sub">نظام إدارة ومبيعات السوبرماركت</p>
+
+    <form id="storeLoginForm" class="auth-form">
+      <label class="field-label" for="storeLoginEmail">البريد الإلكتروني</label>
+      <input type="email" id="storeLoginEmail" placeholder="example@email.com" autocomplete="email" inputmode="email">
+      <label class="field-label" for="storeLoginPass">كلمة المرور</label>
+      <input type="password" id="storeLoginPass" placeholder="••••••••" autocomplete="current-password">
+      <p id="storeLoginError" class="hint error-text"></p>
+      <button type="submit" id="storeLoginSubmitBtn" class="btn-primary full">دخول</button>
     </form>
-    <p class="hint">تسجيل الدخول بحساب Google يفعّل النسخ الاحتياطي التلقائي لبياناتك على Google Drive (اختياري لكن يُنصح به بشدة).</p>
-    <div id="googleSigninButton" class="google-btn-slot"></div>
-    <button id="googleBackupBtnLogin" type="button" class="btn-primary full">تسجيل الدخول بحساب Google</button>
-    <button id="localLoginBtn" type="button" class="btn-text">الدخول بدون حساب Google (محليًا فقط)</button>
-    <p id="googleStatus" class="hint status-line"></p>
+
+    <p class="hint" style="margin-top:18px;">بيانات الدخول تُعطى لك من إدارة دكاني الذكي — لا يوجد تسجيل ذاتي.</p>
   </div>
 </div>
 
@@ -70,7 +70,7 @@
       <button class="nav-btn" data-view="settings"><i class="ic ic-gear"></i><span>الإعدادات</span></button>
     </nav>
     <div class="sidebar-foot">
-      <button id="supplierLoginLink" type="button" class="supplier-login-link">🚚 دخول كمورّد</button>
+      <button id="storeLogoutBtn" type="button" class="sidebar-foot-link">🚪 تسجيل الخروج</button>
       <span class="version-tag">دكاني الذكي • v2</span>
     </div>
   </aside>
@@ -184,53 +184,28 @@
     <section id="view-suppliers" class="view">
       <div class="panel">
         <div class="panel-head">
-          <h3>الموردون</h3>
-          <div class="tabs" id="supplierTabs">
-            <button class="tab active" data-stab="browse">تصفح الموردين</button>
-            <button class="tab" data-stab="orders">طلباتي</button>
+          <h3>طلب بضاعة من الموردين</h3>
+          <div class="tabs" id="orderProductTabs">
+            <button class="tab active" data-ofilter="all">الكل</button>
+            <button class="tab" data-ofilter="low">منخفض</button>
+            <button class="tab" data-ofilter="out">نافد</button>
           </div>
         </div>
-        <p class="hint">تصفح منتجات الموردين المعتمدين واطلب البضاعة مباشرة من داخل النظام بدل الاتصال أو الواتساب. تحتاج هذه الميزة اتصالًا بالإنترنت.</p>
+        <p class="hint">اختر المنتجات والكميات اللي بدك تطلبها، وبنجهّزلك رسالة جاهزة ترسلها عبر واتساب لأي مورّد أو تاجر — بدون حسابات أو اشتراكات.</p>
+        <input type="text" id="orderProductSearch" placeholder="ابحث عن منتج بالاسم أو الباركود...">
       </div>
 
-      <div id="supplierBrowsePane">
-        <div id="supplierListWrap" class="panel">
-          <h3>الموردون المعتمدون</h3>
-          <div id="supplierList" class="supplier-grid"><p class="hint">جارِ التحميل...</p></div>
+      <div class="cashier-grid">
+        <div class="panel cashier-left">
+          <div id="orderProductsList" class="data-table"></div>
         </div>
-
-        <div id="supplierProductsWrap" class="cashier-grid hidden">
-          <div class="panel cashier-left">
-            <div class="panel-head">
-              <h3 id="supplierProductsTitle">منتجات المورد</h3>
-              <button id="backToSuppliersBtn" type="button" class="btn-text">⟵ الموردون</button>
-            </div>
-            <input type="text" id="supplierProductSearch" placeholder="ابحث عن منتج بالاسم أو الباركود...">
-            <div id="supplierProductsGrid" class="supplier-products-grid"></div>
-          </div>
-          <div class="panel cashier-right">
-            <h3>طلب الشراء الحالي</h3>
-            <div id="supplierCartTable" class="cart-table"></div>
-            <div class="cart-total"><span>عدد الأصناف</span><strong id="supplierCartCount">0</strong></div>
-
-            <div class="contact-fields">
-              <label class="hint" for="supplierOrderPhone">رقم هاتفك (لتواصل المورّد معك)</label>
-              <input type="tel" id="supplierOrderPhone" placeholder="مثال: 059xxxxxxx" autocomplete="tel" required>
-              <label class="hint" for="supplierOrderLocation">موقعك (حي / معلم قريب أو موقع GPS)</label>
-              <div class="location-row">
-                <input type="text" id="supplierOrderLocation" placeholder="مثال: طولكرم - حي النزهة" autocomplete="off" required>
-                <button type="button" id="useLocationBtn" class="btn-ghost">📍 موقعي</button>
-              </div>
-            </div>
-
-            <button id="sendSupplierOrderBtn" class="btn-primary full">📨 إرسال الطلب للمورد</button>
-          </div>
+        <div class="panel cashier-right">
+          <h3>الطلبية الحالية</h3>
+          <div id="supplierOrderCart" class="cart-table"></div>
+          <div class="cart-total"><span>عدد الأصناف</span><strong id="supplierOrderCount">0</strong></div>
+          <button id="sendWhatsappOrderBtn" class="btn-primary full">📲 إرسال عبر واتساب</button>
+          <button id="clearSupplierOrderBtn" class="btn-text full">إفراغ الطلبية</button>
         </div>
-      </div>
-
-      <div id="supplierOrdersPane" class="panel hidden">
-        <div class="panel-head"><h3>طلباتي المرسلة</h3><span id="myOrdersCount" class="count-chip"></span></div>
-        <div id="myOrdersTable" class="data-table"></div>
       </div>
     </section>
 
@@ -295,6 +270,14 @@
 
     <!-- الإعدادات -->
     <section id="view-settings" class="view">
+      <div class="panel">
+        <h3>بيانات المتجر</h3>
+        <p class="hint">هذا الاسم يظهر لك بالتطبيق ويظهر بالفواتير المطبوعة.</p>
+        <form id="storeProfileForm" class="grid-form">
+          <input type="text" id="storeProfileName" placeholder="اسم المتجر" required>
+          <button type="submit" class="btn-primary">حفظ اسم المتجر</button>
+        </form>
+      </div>
       <div class="panel">
         <h3>النسخ الاحتياطي واستعادة البيانات</h3>
         <p class="hint">يتم حفظ بيانات متجرك محليًا على هذا الجهاز، ويمكنك حفظها أو استعادتها من Google Drive بعد تسجيل الدخول.</p>
@@ -369,126 +352,26 @@
   </div>
 </div>
 
-<!-- ===== نافذة دخول المورد ===== -->
-<div id="supplierLoginModal" class="modal-overlay hidden">
-  <div class="modal-card supplier-login-card">
-    <div class="modal-icon">🚚</div>
-    <h3>دخول المورّد</h3>
-    <p class="hint">هذا الدخول مخصص للموردين المعتمدين فقط. بيانات الدخول تُعطى لك من إدارة دكاني الذكي.</p>
-    <label class="field-label" for="supplierLoginUser">البريد الإلكتروني</label>
-    <input type="email" id="supplierLoginUser" placeholder="example@email.com" autocomplete="email" inputmode="email">
-    <label class="field-label" for="supplierLoginPass">كلمة المرور</label>
-    <input type="password" id="supplierLoginPass" placeholder="••••••••" autocomplete="current-password">
-    <p id="supplierLoginError" class="hint error-text"></p>
+<!-- ===== نافذة رقم التاجر (لإرسال الطلبية عبر واتساب) ===== -->
+<div id="merchantPhoneModal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h3>رقم التاجر / المورّد</h3>
+    <p class="hint">أدخل رقم واتساب التاجر مع مفتاح الدولة وبدون علامة +، مثال: 970599123456</p>
+    <input type="tel" id="merchantPhoneInput" placeholder="970599123456" inputmode="tel">
     <div class="modal-actions">
-      <button id="supplierLoginCancel" class="btn-ghost">إلغاء</button>
-      <button id="supplierLoginOk" class="btn-primary">دخول</button>
+      <button id="merchantPhoneCancel" class="btn-ghost">إلغاء</button>
+      <button id="merchantPhoneOk" class="btn-primary">📲 فتح واتساب</button>
     </div>
   </div>
 </div>
 
-<!-- ===== نافذة إضافة/تعديل منتج المورد ===== -->
-<div id="supplierProductModal" class="modal-overlay hidden">
-  <div class="modal-card" style="max-width:460px;">
-    <h3 id="supplierProductModalTitle">إضافة منتج</h3>
-    <form id="supplierProductForm" class="grid-form" style="margin-top:10px;">
-      <input type="hidden" id="spId">
-      <input type="text" id="spName" placeholder="اسم المنتج" required>
-      <input type="text" id="spBarcode" placeholder="الباركود" required>
-      <input type="number" step="0.01" id="spPrice" placeholder="السعر" required>
-      <input type="text" id="spImageUrl" placeholder="رابط صورة المنتج (اختياري)">
-      <input type="text" id="spDescription" placeholder="وصف مختصر (اختياري)" style="grid-column:1/-1;">
-      <label class="check-row" style="grid-column:1/-1;"><input type="checkbox" id="spAvailable" checked> متوفر حاليًا</label>
-      <div class="modal-actions" style="grid-column:1/-1;margin-top:0;">
-        <button type="button" id="supplierProductCancel" class="btn-ghost">إلغاء</button>
-        <button type="submit" class="btn-primary">حفظ المنتج</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- ===== لوحة تحكم المورد ===== -->
-<div id="supplierShell" class="app-shell hidden">
-  <aside class="sidebar">
-    <div class="sidebar-head">
-      <div class="tatreez-band small" aria-hidden="true">
-        <svg viewBox="0 0 220 12" preserveAspectRatio="none"><rect width="220" height="12" fill="url(#tatreezPattern)" class="tatreez-fill"/></svg>
-      </div>
-      <h2 class="brand-small">لوحة <span>المورّد</span></h2>
-      <p id="supplierNameLabel" class="store-name"></p>
-    </div>
-    <nav class="nav" id="supplierNav">
-      <button class="nav-btn active" data-sview="orders"><i class="ic ic-receipt"></i><span>الطلبات الجديدة</span></button>
-      <button class="nav-btn" data-sview="products"><i class="ic ic-box"></i><span>منتجاتي</span></button>
-      <button class="nav-btn" data-sview="stats"><i class="ic ic-chart"></i><span>الإحصائيات</span></button>
-      <button class="nav-btn" data-sview="profile"><i class="ic ic-gear"></i><span>الملف الشخصي</span></button>
-    </nav>
-    <div class="sidebar-foot">
-      <button id="supplierLogoutBtn" type="button" class="supplier-login-link">🚪 تسجيل الخروج</button>
-      <span class="version-tag">دكاني الذكي • بوابة الموردين</span>
-    </div>
-  </aside>
-
-  <main class="main">
-    <header class="topbar">
-      <div><h1>لوحة تحكم المورّد</h1><p class="view-subtitle">إدارة طلباتك ومنتجاتك المعروضة على أصحاب المحلات</p></div>
-      <div class="topbar-right"><span id="supplierUserChip" class="user-chip"></span></div>
-    </header>
-
-    <section id="sview-orders" class="view active">
-      <div class="panel">
-        <div class="panel-head"><h3>الطلبات الواردة</h3><span id="supplierOrdersCount" class="count-chip"></span></div>
-        <div id="supplierOrdersTable" class="data-table"></div>
-      </div>
-    </section>
-
-    <section id="sview-products" class="view">
-      <div class="panel">
-        <div class="panel-head">
-          <h3>منتجاتي</h3>
-          <span id="supplierProductsCap" class="count-chip"></span>
-        </div>
-        <div class="btn-row">
-          <button id="addSupplierProductBtn" class="btn-primary">+ إضافة منتج جديد</button>
-        </div>
-      </div>
-      <div class="panel">
-        <input type="text" id="supplierMyProductsSearch" placeholder="ابحث في منتجاتك...">
-        <div id="supplierMyProductsTable" class="data-table"></div>
-      </div>
-    </section>
-
-    <section id="sview-stats" class="view">
-      <div class="stat-grid" id="supplierStatGrid"></div>
-      <div class="panel">
-        <h3>الأكثر طلبًا من منتجاتك</h3>
-        <div id="supplierTopProducts" class="bar-list"></div>
-      </div>
-    </section>
-
-    <section id="sview-profile" class="view">
-      <div class="panel">
-        <h3>الملف الشخصي</h3>
-        <p class="hint">هذه المعلومات هي التي يشاهدها أصحاب المحلات عند تصفح الموردين، بما فيها رقم هاتفك.</p>
-        <form id="supplierProfileForm" class="grid-form">
-          <input type="text" id="profSupplierName" placeholder="اسم الشركة / المورد" required>
-          <input type="text" id="profCity" placeholder="المدينة">
-          <input type="tel" id="profPhone" placeholder="رقم الهاتف" required>
-          <input type="text" id="profCategories" placeholder="أنواع المنتجات (افصل بفاصلة)">
-          <button type="submit" class="btn-primary">حفظ الملف الشخصي</button>
-        </form>
-      </div>
-    </section>
-  </main>
-</div>
-
-<!-- Google Login -->
+<!-- Google API (النسخ الاحتياطي إلى Drive فقط) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <!-- Barcode Scanner -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-<!-- Firebase -->
+<!-- Firebase (لحسابات السوبرماركت فقط) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
