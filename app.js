@@ -101,6 +101,7 @@ let pendingDriveAction = null;
 let editingProductId = null;
 let activeCategoryChip = null;
 let activeInventoryFilter = 'all';
+let wakeLock = null;
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -125,6 +126,31 @@ async function init() {
   prepareGoogleDrive();
   startClock();
 }
+
+/* ============================================================
+   منع إطفاء الشاشة تلقائيًا أثناء استخدام البرنامج (Wake Lock)
+   ============================================================ */
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+      });
+    }
+  } catch (err) {
+    console.warn('تعذر تفعيل منع إطفاء الشاشة:', err);
+  }
+}
+
+// المتصفح بيفصل الـ wake lock تلقائيًا لما تتغير التبويبة أو تصغّر التطبيق،
+// فلازم نعيد طلبه لما المستخدم يرجع للصفحة وهو مسجّل دخول
+document.addEventListener('visibilitychange', async () => {
+  const appVisible = !document.getElementById('appShell').classList.contains('hidden');
+  if (document.visibilityState === 'visible' && appVisible) {
+    await requestWakeLock();
+  }
+});
 
 function daysUntil(dateStr) {
   if (!dateStr) return null;
@@ -450,10 +476,11 @@ async function showApp(settingsRow, initialView = 'dashboard') {
   document.getElementById('scanBeepSetting').checked = scanSettings.beep;
   document.getElementById('scanVibrateSetting').checked = scanSettings.vibrate;
 
-  await refreshDashboard();
+await refreshDashboard();
   await refreshEmployeesTable();
   await refreshCategoryList();
   switchToView(initialView);
+  requestWakeLock();
 }
 
 function switchToView(view) {
